@@ -1,0 +1,372 @@
+
+---
+title: false
+format:
+  pdf:
+    geometry: margin=0.8in
+    fontsize: 10pt
+    fig-pos: H
+    linestretch: 1.05
+editor: source
+execute:
+  warning: false
+  message: false
+---
+
+\begin{center}
+{\large\textbf{Do Industry Portfolios Respond Differently to Market Gains and Losses?}}\\[3pt]
+STOR 664 Project Proposal\\[3pt]
+Manas Dhawan, Lily Feingold, Sebastian Sec, and Tommy Smith\\[2pt]
+November 5, 2026
+\end{center}
+
+```{r}
+#| label: setup
+#| include: false
+
+library(dplyr)
+library(ggplot2)
+library(httr2)
+
+theme_set(theme_minimal(base_size = 10))
+
+start_date <- as.Date("2000-01-01")
+```
+
+## Research Question and Motivation
+
+Suppose the stock market rises by 5% in a given month, and the healthcare industry rises by 3%. Would we expect healthcare stocks to fall by 3% if the market instead declined by 5%? At first glance, it seems reasonable that an industry's response to the market should be the same regardless of whether the market is going up or down. But is that necessarily true?
+
+Behavioral economics offers one reason to question this symmetry. According to the principle of *loss aversion*, people tend to experience the pain of a loss more strongly than the pleasure of an equivalent gain. If this tendency is widespread among investors, we might expect it to influence financial markets more broadly, potentially causing investors to respond more strongly to negative news than to equally positive news.
+
+There are also reasons that individual industries might respond differently to market gains and losses. Consider healthcare, for example. Regardless of the state of the economy, people still need medications, medical procedures, and other healthcare services. As a result, we might expect healthcare companies to be somewhat insulated from market downturns, perhaps experiencing smaller declines than their responses to market gains would suggest. Conversely, industries that rely more heavily on discretionary spending might be particularly vulnerable during downturns as consumers cut back on nonessential purchases.
+
+On the other hand, an industry's exposure to broader economic conditions might remain relatively constant regardless of the direction of market movements. In this case, a single measure of market sensitivity could adequately describe its behavior in both positive and negative markets.
+
+In financial economics, a common approach is to model an industry's *excess return* (its return above the risk-free rate) as a linear function of the market's excess return. The slope of this regression, often called the industry's *beta*, measures its sensitivity to movements in the broader market. The standard model assumes this sensitivity remains constant regardless of the direction of market movements.
+
+**Our primary research question is whether an industry's sensitivity to market movements differs between periods of positive and negative market excess returns.** We will investigate this question using linear regression, focusing initially on healthcare, with comparisons across other industries as a possible extension. Our goal is hypothesis testing and estimation rather than prediction or causal inference.
+
+## Data
+
+We will use publicly available monthly financial data from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html). We combine the *Five Industry Portfolios* dataset, containing value-weighted returns for consumer, manufacturing, technology, healthcare, and other industries, with the *Fama–French Research Data Factors*, which provide market excess returns and risk-free rates.
+
+Each observation represents one month. For our primary analysis, we consider data from January 2000 onward, defining healthcare excess return as the industry's return minus the risk-free rate. Our primary predictor is the market's excess return.
+
+```{r}
+#| label: load-data
+#| include: false
+
+# Download the publicly available French data archives.
+
+base_url <- paste0(
+  "https://mba.tuck.dartmouth.edu/pages/",
+  "faculty/ken.french/ftp/"
+)
+
+download_french <- function(filename) {
+  destination <- tempfile(fileext = ".zip")
+
+  request(paste0(base_url, filename)) |>
+    req_user_agent("Mozilla/5.0") |>
+    req_perform(path = destination)
+
+  extraction_dir <- tempfile()
+  dir.create(extraction_dir)
+
+  files <- unzip(destination, exdir = extraction_dir)
+
+  csv_file <- files[
+    grepl("\\.csv$", files, ignore.case = TRUE)
+  ][1]
+
+  readLines(csv_file, warn = FALSE)
+}
+
+# Extract the monthly table, excluding annual summaries.
+
+read_monthly <- function(lines) {
+  monthly <- grepl("^\\s*[0-9]{6}\\s*,", lines)
+
+  first <- which(monthly)[1]
+  last <- first
+
+  while (last < length(lines) && monthly[last + 1]) {
+    last <- last + 1
+  }
+
+  block <- lines[c(first - 1, first:last)]
+
+  result <- read.csv(
+    text = paste(block, collapse = "\n"),
+    check.names = FALSE,
+    strip.white = TRUE
+  )
+
+  names(result)[1] <- "ym"
+  result$ym <- as.character(result$ym)
+
+  result
+}
+
+industry_raw <- read_monthly(
+  download_french("5_Industry_Portfolios_CSV.zip")
+)
+
+factors_raw <- read_monthly(
+  download_french("F-F_Research_Data_Factors_CSV.zip")
+)
+
+# Retain monthly returns, reported in percentage points.
+
+industry <- industry_raw |>
+  select(ym, Cnsmr, Manuf, HiTec, Hlth, Other)
+
+factors <- factors_raw |>
+  select(ym, `Mkt-RF`, RF)
+
+data <- inner_join(industry, factors, by = "ym") |>
+  mutate(
+    date = as.Date(
+      paste0(ym, "01"),
+      format = "%Y%m%d"
+    ),
+    market = `Mkt-RF`,
+    health = Hlth - RF,
+    negative = as.integer(market < 0),
+    interaction = market * negative
+  ) |>
+  filter(
+    date >= start_date,
+    if_all(
+      c(market, health),
+      ~ !is.na(.x) & .x > -99
+    )
+  ) |>
+  arrange(date)
+```
+
+```{r}
+#| label: data-validation
+#| include: false
+
+# Automated data integrity checks.
+# Execution stops if any assertion fails.
+
+# Each month should occur only once in the source files.
+stopifnot(
+  !anyDuplicated(industry$ym),
+  !anyDuplicated(factors$ym)
+)
+
+# The joined dataset must be nonempty and have valid dates.
+stopifnot(
+  nrow(data) > 0,
+  all(!is.na(data$date)),
+  !anyDuplicated(data$date),
+  all(data$date >= start_date),
+  identical(data$date, sort(data$date))
+)
+
+# Required variables must be finite.
+stopifnot(
+  all(is.finite(data$market)),
+  all(is.finite(data$health)),
+  all(is.finite(data$RF))
+)
+
+# Verify the excess-return calculations.
+stopifnot(
+  isTRUE(all.equal(
+    data$health,
+    data$Hlth - data$RF
+  )),
+  isTRUE(all.equal(
+    data$market,
+    data[["Mkt-RF"]]
+  ))
+)
+
+# Verify the sign indicator and interaction term.
+stopifnot(
+  identical(
+    data$negative,
+    as.integer(data$market < 0)
+  ),
+  isTRUE(all.equal(
+    data$interaction,
+    data$market * data$negative
+  ))
+)
+
+# Verify the monthly sequence has no gaps.
+expected_months <- seq(
+  from = min(data$date),
+  to = max(data$date),
+  by = "month"
+)
+
+stopifnot(
+  identical(data$date, expected_months)
+)
+```
+
+Our dataset contains `r nrow(data)` monthly observations, spanning `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`. We focus on this more recent period to study a relationship relevant to contemporary financial markets.
+
+## Exploratory Analysis
+
+@fig-healthcare plots monthly healthcare excess returns against market excess returns, together with fitted regression lines allowing different slopes for positive and negative market excess returns.
+
+```{r}
+#| label: preliminary-models
+#| include: false
+
+model_simple <- lm(
+  health ~ market,
+  data = data
+)
+
+model_asymmetric <- lm(
+  health ~ market + interaction,
+  data = data
+)
+
+# Extract estimated slopes.
+
+beta_positive <- unname(
+  coef(model_asymmetric)["market"]
+)
+
+beta_negative <- unname(
+  coef(model_asymmetric)["market"] +
+  coef(model_asymmetric)["interaction"]
+)
+
+slope_difference <- beta_negative - beta_positive
+
+# Predictions for plotting.
+
+plot_data <- data.frame(
+  market = seq(
+    min(data$market),
+    max(data$market),
+    length.out = 300
+  )
+)
+
+plot_data$interaction <- (
+  plot_data$market *
+    (plot_data$market < 0)
+)
+
+plot_data$fitted <- predict(
+  model_asymmetric,
+  newdata = plot_data
+)
+
+plot_data$direction <- ifelse(
+  plot_data$market < 0,
+  "Negative market excess return",
+  "Nonnegative market excess return"
+)
+```
+
+```{r}
+#| label: fig-healthcare
+#| echo: false
+#| fig-cap: "Healthcare excess returns versus market excess returns. The lines show the estimated relationship on either side of zero."
+#| fig-width: 5.8
+#| fig-height: 2.65
+#| fig-align: center
+
+ggplot(data, aes(x = market, y = health)) +
+  geom_point(
+    alpha = 0.35,
+    color = "gray45",
+    size = 1.2
+  ) +
+  geom_line(
+    data = plot_data,
+    aes(
+      x = market,
+      y = fitted,
+      color = direction
+    ),
+    linewidth = 1,
+    inherit.aes = FALSE
+  ) +
+  geom_vline(
+    xintercept = 0,
+    linetype = "dashed",
+    color = "gray50"
+  ) +
+  labs(
+    x = "Market excess return (%)",
+    y = "Healthcare excess return (%)",
+    color = NULL
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    plot.margin = margin(2, 2, 2, 2)
+  )
+```
+
+The estimated slopes are `r sprintf("%.2f", beta_positive)` for nonnegative market excess returns and `r sprintf("%.2f", beta_negative)` for negative market excess returns. Both are below one, suggesting that healthcare returns are generally less sensitive to market movements than a portfolio with a beta of one. Interestingly, the slopes are also quite similar: the estimated difference is only `r sprintf("%.2f", slope_difference)`. Thus, although healthcare appears relatively insulated from market movements overall, the preliminary results suggest that its sensitivity may not differ substantially between market gains and losses.
+
+The scatterplot also reveals considerable variation around the fitted lines, with several observations corresponding to particularly large market movements. We will investigate whether these observations disproportionately influence our estimated slopes.
+
+## Proposed Statistical Methods
+
+Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. We begin with the standard linear regression model
+
+$$
+Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,
+$$
+
+where $\beta_1$ measures the expected change in healthcare excess return associated with a one-percentage-point increase in market excess return. This model assumes constant market sensitivity, regardless of the direction of market movements.
+
+To investigate whether this assumption is appropriate, we introduce an interaction term:
+
+$$
+Y_t = \beta_0 + \beta_1 X_t
++ \beta_2 X_t I(X_t < 0) + \varepsilon_t.
+$$
+
+Although this model allows for different slopes, it remains linear in the regression coefficients and can be estimated using ordinary least squares.
+
+When $X_t \geq 0$, the indicator is zero, and the slope is $\beta_1$. When $X_t < 0$, the slope becomes $\beta_1 + \beta_2$. Thus, $\beta_2$ measures the difference in market sensitivity between negative and nonnegative market excess returns.
+
+This motivates our primary hypothesis test:
+
+$$
+H_0: \beta_2 = 0
+\qquad \text{versus} \qquad
+H_A: \beta_2 \neq 0.
+$$
+
+Under the null hypothesis, a single slope adequately describes the relationship. Under the alternative, the slopes differ depending on the direction of market excess returns.
+
+We will estimate both models using ordinary least squares and conduct a two-sided $t$-test for $\beta_2$, equivalent under standard assumptions to a partial $F$-test comparing the nested models. We will report confidence intervals and compare model fit to assess whether the additional interaction term provides a meaningful improvement.
+
+If time permits, we may extend this analysis to other industries to investigate whether patterns of market sensitivity differ between industries providing essential goods and services and those more dependent on discretionary spending.
+
+## Potential Concerns and Limitations
+
+An important concern is that financial returns may violate standard regression assumptions. In particular, their variability may change over time, and neighboring observations may exhibit dependence. Either could affect conventional standard errors and hypothesis tests. We will examine residual plots and investigate these potential issues.
+
+We will also assess sensitivity to influential observations. If the apparent asymmetry is driven primarily by a few months during financial crises, our conclusions may differ from those suggested by the full sample. We therefore plan to examine influential observations and compare estimates across sample periods.
+
+Finally, our analysis concerns contemporaneous market and industry returns. Any association we identify should not be interpreted as causal or as evidence of our ability to predict future returns.
+
+## References
+
+French, Kenneth R. *Kenneth R. French Data Library.*
+
+https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
+
+## Contributions and Acknowledgments
+
+[Specify each group member's contributions.]
+
+We used ChatGPT to assist with writing and organizing R code for downloading, combining, and preparing the two publicly available datasets. To check the data preparation, we implemented automated validation tests using `stopifnot()` in R. These tests check for duplicate monthly observations, missing or nonfinite values in key variables, chronological consistency, and correct construction of excess returns and the interaction term. The tests are executed when the document renders and halt execution if an assertion fails. We also used ChatGPT to help improve the conciseness of the proposal. Specifically, we asked it to suggest passages that could be shortened or removed, then independently evaluated these recommendations and decided which changes to incorporate.

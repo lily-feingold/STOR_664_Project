@@ -1,0 +1,15 @@
+# RStudio
+.Rhistory
+.RData
+.Ruserdata
+
+# Quarto output and intermediate files
+.quarto/
+*_files/
+*.aux
+*.log
+*.tex
+*.synctex.gz
+
+# macOS
+.DS_Store
