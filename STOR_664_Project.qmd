@@ -213,6 +213,14 @@ stopifnot(
 
 Our dataset contains `r nrow(data)` monthly observations, spanning `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`. We focus on this more recent period to study a relationship relevant to contemporary financial markets.
 
+Here is the code for uploading the data set
+
+```{r}
+library(readxl)
+
+df <- read_excel("data/STOR664_Data_Month_Year.xlsx")
+```
+
 ## Exploratory Analysis
 
 @fig-healthcare plots monthly healthcare excess returns against market excess returns, together with fitted regression lines allowing different slopes for positive and negative market excess returns.
