@@ -330,7 +330,11 @@ Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t D_t + \varepsilon_t.
 $$
 When $X_t \geq 0$, the interaction is zero and the slope is $\beta_1$. When $X_t <0$, the interaction equals $X_t$ and the slope is $\beta_1 + \beta_2$. Both segments have the fitted value $\beta_0$ at $X_t = 0$, so the regression is continuous at zero. We use a common intercept because we expect the fitted healthcare excess return to change continuously as market excess return crosses zero. Months just below and just above zero have nearly identical market excess returns, and we have no specific reason to expect an abrupt shift in fitted healthcare returns at that boundary.
 
-Our parameter of interest is the negative-market slope minus the nonnegative-market slope, $(\beta_1 +\beta_2) - \beta_1 = \beta_2$. We test $H_0: \beta_2 = 0$ against $H_A: \beta_2 \ne 0$. Under the null, the piecewise model reduces to the single-slope model. 
+Our parameter of interest is the negative-market slope minus the nonnegative-market slope, 
+$$
+(\beta_1 +\beta_2) - \beta_1 = \beta_2.
+$$
+We test $H_0: \beta_2 = 0$ against $H_A: \beta_2 \ne 0$. Under the null, the piecewise model reduces to the single-slope model. 
 
 Let $\mathbf X$ denote the observed series of market excess returns. Conventional OLS standard errors assume that $\operatorname{Var}(\varepsilon_t \mid \mathbf X )= \sigma^2$ for every month and that $\operatorname{Cov}(\varepsilon_t, \varepsilon_s \mid \mathbf X) = 0$ for distinct months $t$ and $s$. Constant variance means that the spread of healthcare returns around the fitted relationship is the same across months. This assumption may be restrictive because the market return captures only part of what moves the healthcare portfolio; for example, an unexpectedly successful trial or rejected drug application could move pharmaceutical or biotech stocks. During periods of heightened uncertainty, the deviations from the fitted relationship may be larger and may stay large for several months.
 
