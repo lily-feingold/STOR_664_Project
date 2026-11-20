@@ -328,7 +328,7 @@ To allow market sensitivity to differ between negative and nonnegative months, w
 $$
 Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t D_t + \varepsilon_t. 
 $$
-When $X_t \geq 0$, the interaction is zero and the slope is $\beta_1$. When $X_t <0$, the interaction equals $X_t$ and the slope is $\beta_1 + \beta_2$. Both segments have the fitted value $\beta_0$ at $X_t = 0$, so the regression is continuous at zero. We impose this restriction because months in which the market earns just below or just above the risk-free rate have nearly identical market excess returns, and we expect their fitted healthcare excess returns to be close.
+When $X_t \geq 0$, the interaction is zero and the slope is $\beta_1$. When $X_t <0$, the interaction equals $X_t$ and the slope is $\beta_1 + \beta_2$. Both segments have the fitted value $\beta_0$ at $X_t = 0$, so the regression is continuous at zero. We use a common intercept because we expect the fitted healthcare excess return to change continuously as market excess return crosses zero. Months just below and just above zero have nearly identical market excess returns, and we have no specific reason to expect an abrupt shift in fitted healthcare returns at that boundary.
 
 Our parameter of interest is the negative-market slope minus the nonnegative-market slope, $(\beta_1 +\beta_2) - \beta_1 = \beta_2$. We test $H_0: \beta_2 = 0$ against $H_A: \beta_2 \ne 0$. Under the null, the piecewise model reduces to the single-slope model. 
 
