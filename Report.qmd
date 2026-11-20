@@ -250,13 +250,21 @@ Target length: about 1 page.
 
 ### Data
 
-We obtain monthly financial data from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html), combining two publicly available datasets: the *Five Industry Portfolios* and the *Fama–French Research Data Factors*. The industry dataset provides value-weighted monthly returns for five broad U.S. industry portfolios: consumer, manufacturing, technology, healthcare, and other. Stocks are assigned to industries based on their Standard Industrial Classification (SIC) codes, and portfolio returns are weighted by market capitalization. The Fama–French factors dataset provides the market excess return (`Mkt-RF`) and the risk-free rate (`RF`), based on a broad U.S. equity market portfolio and one-month Treasury bill returns, respectively.
+We obtain monthly financial data from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html), combining two publicly available datasets: the *Five Industry Portfolios* and the *Fama–French Research Data Factors*. Both datasets are constructed using stock return data from the Center for Research in Security Prices (CRSP), covering eligible U.S. stocks listed on the New York Stock Exchange (NYSE), American Stock Exchange (AMEX), and NASDAQ.
 
-Our primary response variable is healthcare excess return, defined as the healthcare portfolio return (`Hlth`) minus the risk-free rate (`RF`). The explanatory variable is market excess return (`Mkt-RF`), which is already expressed relative to the risk-free rate. To investigate asymmetric market sensitivity, we construct an indicator equal to one when market excess return is negative and zero otherwise, along with an interaction between this indicator and market excess return. This interaction allows the estimated market sensitivity to differ between positive and negative market conditions. All returns are measured in percentage points.
+The *Five Industry Portfolios* dataset provides monthly value-weighted returns for five broad industry groups: consumer, manufacturing, technology, healthcare, and other. Stocks are assigned to these portfolios based on their four-digit Standard Industrial Classification (SIC) codes, using classifications from Compustat or CRSP. Portfolio assignments are updated annually in June, and returns are calculated for the following July through June. Within each portfolio, returns are weighted by market capitalization, meaning larger companies contribute more heavily to the portfolio's performance. Our primary focus is the healthcare portfolio, which includes companies involved in healthcare services, pharmaceuticals, and medical equipment.
+
+The *Fama–French Research Data Factors* dataset provides monthly market excess returns (`Mkt-RF`) and the risk-free rate (`RF`). The market return is calculated as the value-weighted return of eligible U.S. common stocks in the CRSP database, representing a broader equity market than the S&P 500 alone. Market excess return is obtained by subtracting the one-month U.S. Treasury bill return from this market portfolio return. The risk-free rate is based on data from Ibbotson Associates through May 2024 and the ICE BofA US 1-Month Treasury Bill Index beginning in June 2024.
+
+Our primary response variable is healthcare excess return, defined as the healthcare portfolio return (`Hlth`) minus the risk-free rate (`RF`). Our explanatory variable is market excess return (`Mkt-RF`). To examine whether healthcare responds differently to market gains and losses, we construct an indicator equal to one when market excess return is negative and zero otherwise, along with an interaction between the indicator and market excess return. All returns are measured in percentage points.
 
 Our analysis sample contains `r nrow(data)` monthly observations from `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`, of which `r n_negative` months had negative market excess returns and `r n_nonnegative` had nonnegative ones. We restrict the sample to January 2000 onward to focus on relatively recent financial market conditions while retaining sufficient observations for estimation and hypothesis testing.
 
-In preparing the data, we retain only the monthly value-weighted industry returns and monthly factor observations, excluding annual summaries. We treat the source files' missing-value codes (including −99.99 and −999) as missing and exclude incomplete observations. The datasets are merged by month using an inner join to ensure that industry and market returns correspond to the same period. Finally, automated validation checks verify chronological consistency, unique monthly observations, the absence of missing or nonfinite values, and the correct construction of excess returns and interaction variables.
+To prepare the data, we extract monthly value-weighted industry returns and monthly market factors, excluding annual summaries. We treat missing-value codes in the original files as missing and exclude incomplete observations. The datasets are merged by their year-month identifiers using an inner join, ensuring that industry and market returns correspond to the same month. Automated validation checks confirm chronological consistency, the absence of duplicate or missing monthly observations, and the correct construction of our regression variables.
+
+### Setting of Our Conclusions
+
+Our conclusions concern the relationship between monthly excess returns on value-weighted U.S. industry portfolios and the broader U.S. equity market from January 2000 through September 2026. Our primary analysis focuses on healthcare, with comparisons across consumer, manufacturing, technology, and other industries. Because these portfolios consist of publicly traded U.S. stocks and are weighted by market capitalization, our findings primarily characterize the behavior of broad industry portfolios rather than individual companies. We do not claim that these relationships extend to international markets, daily returns, or future periods. Furthermore, our analysis identifies statistical associations between contemporaneous market and industry returns and does not establish causality or provide evidence of predictive performance.
 
 ```{r}
 #| label: tbl-summary
@@ -287,10 +295,6 @@ knitr::kable(
   align = "lccccc"
 )
 ```
-
-### Setting of Our Conclusions
-
-*TODO: Name the population/setting our conclusions apply to. For example: value-weighted U.S. healthcare stocks (NYSE, AMEX, and NASDAQ) relative to the U.S. market, monthly horizon, 2000 to present. Say what we are **not** claiming: other countries, daily returns, individual stocks, or future periods.*
 
 ```{=html}
 <!--
