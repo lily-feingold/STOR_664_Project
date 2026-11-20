@@ -1,6 +1,4 @@
-
 ---
-title: false
 format:
   pdf:
     geometry: margin=0.8in
@@ -13,6 +11,7 @@ execute:
   message: false
 ---
 
+```{=html}
 <!--
 REPORT SKELETON
 Rubric: 4–6 pages including figures and tables, excluding references and the
@@ -26,6 +25,7 @@ Conventions in this file:
     to `eval: true` (or delete the line) when the section is ready.
   - Rubric requirements are quoted in comments like this one.
 -->
+```
 
 \begin{center}
 {\large\textbf{Do Industry Portfolios Respond Differently to Market Gains and Losses?}}\\[3pt]
@@ -225,6 +225,7 @@ n_negative <- sum(data$negative)
 n_nonnegative <- nrow(data) - n_negative
 ```
 
+```{=html}
 <!--
 =============================================================================
 1. INTRODUCTION
@@ -235,6 +236,7 @@ comprehensive literature review of the area."
 Target length: about 1 page.
 =============================================================================
 -->
+```
 
 ## 1. Introduction
 
@@ -290,6 +292,7 @@ knitr::kable(
 
 *TODO: Name the population/setting our conclusions apply to. For example: value-weighted U.S. healthcare stocks (NYSE, AMEX, and NASDAQ) relative to the U.S. market, monthly horizon, 2000 to present. Say what we are **not** claiming: other countries, daily returns, individual stocks, or future periods.*
 
+```{=html}
 <!--
 =============================================================================
 2. METHODS
@@ -298,34 +301,31 @@ assessed uncertainty or predictive performance."
 Target length: about 1–1.5 pages.
 =============================================================================
 -->
+```
 
 ## 2. Methods
 
 ### Models
 
-Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
+Let $Y_t$\$Y_t\$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
 
-$$
-Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,
-$$ {#eq-simple}
+$$Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,$$
+ {#eq-simple}
 
 and the asymmetric model adds an interaction with the negative-market indicator:
 
-$$
-Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.
-$$ {#eq-asymmetric}
+$$Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.$$
+ {#eq-asymmetric}
 
-*TODO: Interpret the coefficients: the slope is $\beta_1$ when $X_t \ge 0$ and $\beta_1 + \beta_2$ when $X_t < 0$. Note that the fitted line is continuous at zero (one shared intercept, no separate intercept shift).*
+*TODO: Interpret the coefficients: the slope is* $\beta_1$ when $X_t \ge 0$ and $\beta_1 + \beta_2$ when $X_t < 0$. Note that the fitted line is continuous at zero (one shared intercept, no separate intercept shift).
 
 *TODO: Justify modeling choices. Why break at zero rather than at another threshold? Why no separate intercept for down markets? Why excess returns rather than raw returns?*
 
 ### Hypothesis Test and Estimation
 
-$$
-H_0: \beta_2 = 0 \qquad \text{versus} \qquad H_A: \beta_2 \neq 0.
-$$
+$$H_0: \beta_2 = 0 \qquad \text{versus} \qquad H_A: \beta_2 \neq 0.$$
 
-*TODO: Describe the two-sided $t$-test for $\beta_2$ and its equivalence to the partial $F$-test comparing @eq-simple and @eq-asymmetric. State the significance level ($\alpha = 0.05$?). Say that we report point estimates and 95% confidence intervals for $\beta_1$, $\beta_1 + \beta_2$, and $\beta_2$.*
+*TODO: Describe the two-sided* $t$-test for $\beta_2$ and its equivalence to the partial $F$-test comparing @eq-simple and @eq-asymmetric. State the significance level ($\alpha = 0.05$?). Say that we report point estimates and 95% confidence intervals for $\beta_1$, $\beta_1 + \beta_2$, and $\beta_2$.
 
 ### Assumptions and Assessing Uncertainty
 
@@ -341,6 +341,7 @@ $$
 
 *TODO: If we fit the same model to the other four industries, say so here, along with how we handle multiple comparisons (e.g., Bonferroni across 5 tests, or treating these as exploratory). Delete this subsection if we skip the extension.*
 
+```{=html}
 <!--
 =============================================================================
 3. RESULTS
@@ -350,6 +351,7 @@ what it revealed."
 Target length: about 1.5–2 pages including figures/tables.
 =============================================================================
 -->
+```
 
 ## 3. Results
 
@@ -438,11 +440,11 @@ model_table <- data.frame(
 knitr::kable(model_table, digits = 3, row.names = FALSE, escape = FALSE)
 ```
 
-*TODO: Report the test of $H_0: \beta_2 = 0$ in words, using the inline values below, and interpret it in context (e.g., "a 1-point market decline is associated with ..."). Remember that a non-significant result is fine: explain what the confidence interval does and does not rule out.*
+*TODO: Report the test of* $H_0: \beta_2 = 0$ in words, using the inline values below, and interpret it in context (e.g., "a 1-point market decline is associated with ..."). Remember that a non-significant result is fine: explain what the confidence interval does and does not rule out.
 
 The estimated difference in slopes is $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)` (95% CI `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])`; $t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`).
 
-*TODO: Compare model fit (e.g., $R^2$, adjusted $R^2$, residual standard error) between the two models.*
+*TODO: Compare model fit (e.g.,* $R^2$, adjusted $R^2$, residual standard error) between the two models.
 
 ### Model Checks
 
@@ -493,7 +495,7 @@ nw_test <- lmtest::coeftest(model_asymmetric, vcov. = nw_vcov)
 nw_ci <- lmtest::coefci(model_asymmetric, vcov. = nw_vcov)
 ```
 
-*TODO: If we use robust standard errors, report how they change the conclusion for $\beta_2$.*
+*TODO: If we use robust standard errors, report how they change the conclusion for* $\beta_2$.
 
 ### Sensitivity Analyses
 
@@ -515,7 +517,7 @@ model_no_influential <- lm(
 beta2_no_influential <- unname(coef(model_no_influential)["interaction"])
 ```
 
-*TODO: Report how many months exceed the Cook's distance cutoff ($4/n$ is a common rule of thumb; justify whichever cutoff we use), which months they are (crisis months?), and how $\hat\beta_2$ changes when they are excluded (currently `r sprintf("%.3f", beta2_no_influential)` vs. `r sprintf("%.3f", slope_difference)` in the full sample).*
+*TODO: Report how many months exceed the Cook's distance cutoff (*$4/n$ is a common rule of thumb; justify whichever cutoff we use), which months they are (crisis months?), and how $\hat\beta_2$ changes when they are excluded (currently `r sprintf("%.3f", beta2_no_influential)` vs. `r sprintf("%.3f", slope_difference)` in the full sample).
 
 ```{r}
 #| label: tbl-subperiods
@@ -585,6 +587,7 @@ knitr::kable(industry_table, digits = 3, row.names = FALSE)
 
 *TODO: Interpret the cross-industry comparison (essential vs. discretionary industries), or delete this subsection.*
 
+```{=html}
 <!--
 =============================================================================
 4. DISCUSSION
@@ -596,6 +599,7 @@ answer is acceptable. Explain what the evidence supports."
 Target length: about 0.75–1 page.
 =============================================================================
 -->
+```
 
 ## 4. Discussion
 
@@ -605,7 +609,7 @@ Target length: about 0.75–1 page.
 
 ### What Remains Uncertain
 
-*TODO: What the confidence interval for $\beta_2$ can and cannot rule out. Whether the results depend on the sample period or a few extreme months.*
+*TODO: What the confidence interval for* $\beta_2$ can and cannot rule out. Whether the results depend on the sample period or a few extreme months.
 
 ### Limitations
 
@@ -629,10 +633,12 @@ French, Kenneth R. *Kenneth R. French Data Library.* <https://mba.tuck.dartmouth
 
 ## Contributions and Acknowledgments
 
+```{=html}
 <!--
 Rubric: "acknowledge each member's contributions and outside help, including
 how you used AI and checked its work. State if you used no outside help."
 -->
+```
 
 *TODO: Each member's contributions to the report and the code, by name:*
 
@@ -643,10 +649,12 @@ how you used AI and checked its work. State if you used no outside help."
 
 *TODO: Outside help and AI use. Carry over the ChatGPT acknowledgment from the plan and add any new uses (including Claude, which was used to draft this report skeleton), and how we checked each one.*
 
+```{=html}
 <!--
 Optional appendix: does not count toward the 4–6 page limit. Good place for
 extra diagnostics, the full regression output, or the full industry table.
 -->
+```
 
 ## Appendix (optional)
 
