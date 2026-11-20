@@ -47,6 +47,7 @@ theme_set(theme_minimal(base_size = 10))
 set.seed(664)  # Only matters if we add simulation or bootstrap steps.
 
 start_date <- as.Date("2000-01-01")
+end_date <- as.Date("2026-09-01")
 ```
 
 ```{r}
@@ -124,10 +125,7 @@ factors <- factors_raw |>
 
 data <- inner_join(industry, factors, by = "ym") |>
   mutate(
-    date = as.Date(
-      paste0(ym, "01"),
-      format = "%Y%m%d"
-    ),
+    date = as.Date(paste0(ym, "01"), format = "%Y%m%d"),
     market = `Mkt-RF`,
     health = Hlth - RF,
     negative = as.integer(market < 0),
@@ -135,12 +133,16 @@ data <- inner_join(industry, factors, by = "ym") |>
   ) |>
   filter(
     date >= start_date,
+    date <= end_date,
     if_all(
-      c(market, health),
-      ~ !is.na(.x) & .x > -99
+      c(Cnsmr, Manuf, HiTec, Hlth, Other, market, RF),
+      ~ is.finite(.x) & .x > -99
     )
   ) |>
   arrange(date)
+
+n_negative <- sum(data$negative == 1)
+n_nonnegative <- sum(data$negative == 0)
 
 # TODO: If we pin the sample to a fixed end date for reproducibility
 # (the French library updates monthly), add e.g.
@@ -246,33 +248,44 @@ Target length: about 1 page.
 
 ### Data
 
-*TODO: Data source (cite the Kenneth R. French Data Library), the two datasets (Five Industry Portfolios, value-weighted; Fama–French Research Data Factors), and what one observation is (one month).*
+### Data
 
-*TODO: Variables. Response: healthcare excess return (`Hlth` − `RF`). Predictor: market excess return (`Mkt-RF`). Derived: the negative-market indicator and the interaction term. All returns are in percentage points.*
+We obtain monthly financial data from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html), combining two publicly available datasets: the *Five Industry Portfolios* and the *Fama–French Research Data Factors*. The industry dataset provides value-weighted monthly returns for five broad U.S. industry portfolios: consumer, manufacturing, technology, healthcare, and other. Stocks are assigned to industries based on their Standard Industrial Classification (SIC) codes, and portfolio returns are weighted by market capitalization. The Fama–French factors dataset provides the market excess return (`Mkt-RF`) and the risk-free rate (`RF`), based on a broad U.S. equity market portfolio and one-month Treasury bill returns, respectively.
 
-*TODO: Sample size and period. The inline code below fills itself in.*
+Our primary response variable is healthcare excess return, defined as the healthcare portfolio return (`Hlth`) minus the risk-free rate (`RF`). The explanatory variable is market excess return (`Mkt-RF`), which is already expressed relative to the risk-free rate. To investigate asymmetric market sensitivity, we construct an indicator equal to one when market excess return is negative and zero otherwise, along with an interaction between this indicator and market excess return. This interaction allows the estimated market sensitivity to differ between positive and negative market conditions. All returns are measured in percentage points.
 
-Our analysis sample contains `r nrow(data)` monthly observations from `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`, of which `r n_negative` months had negative market excess returns and `r n_nonnegative` had nonnegative ones.
+Our analysis sample contains `r nrow(data)` monthly observations from `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`, of which `r n_negative` months had negative market excess returns and `r n_nonnegative` had nonnegative ones. We restrict the sample to January 2000 onward to focus on relatively recent financial market conditions while retaining sufficient observations for estimation and hypothesis testing.
 
-*TODO: Cleaning decisions. Explain why we use January 2000 onward; that the files code missing values as −99.99 and we drop them; that we keep only the monthly tables, not the annual summaries; the inner join on month; and the automated validation checks. Add the end date if we pin one.*
+In preparing the data, we retain only the monthly value-weighted industry returns and monthly factor observations, excluding annual summaries. We treat the source files' missing-value codes (including −99.99 and −999) as missing and exclude incomplete observations. The datasets are merged by month using an inner join to ensure that industry and market returns correspond to the same period. Finally, automated validation checks verify chronological consistency, unique monthly observations, the absence of missing or nonfinite values, and the correct construction of excess returns and interaction variables.
 
 ```{r}
 #| label: tbl-summary
 #| echo: false
-#| tbl-cap: "Summary statistics for monthly excess returns (percentage points). TODO: decide whether to keep this table or move it to the appendix."
+#| tbl-cap: "Summary statistics for monthly market and healthcare excess returns (percentage points)."
 
 summary_table <- data |>
-  mutate(Regime = ifelse(negative == 1, "Negative market", "Nonnegative market")) |>
+  mutate(
+    Regime = ifelse(
+      negative == 1,
+      "Negative market",
+      "Nonnegative market"
+    )
+  ) |>
   group_by(Regime) |>
   summarise(
     Months = n(),
     `Mean market` = mean(market),
     `SD market` = sd(market),
     `Mean healthcare` = mean(health),
-    `SD healthcare` = sd(health)
+    `SD healthcare` = sd(health),
+    .groups = "drop"
   )
 
-knitr::kable(summary_table, digits = 2)
+knitr::kable(
+  summary_table,
+  digits = 2,
+  align = "lccccc"
+)
 ```
 
 ### Setting of Our Conclusions
