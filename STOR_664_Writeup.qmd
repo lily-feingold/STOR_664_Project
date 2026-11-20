@@ -316,26 +316,27 @@ The scatterplot also reveals considerable variation around the fitted lines, wit
 
 ## Methods
 
-Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. We first fit a single-slope regression of healthcare excess return on market excess return
+Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$, both measured in percent. We first fit a single-slope benchmark by ordinary least squares:
 
 $$
-Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,
+Y_t = \alpha_0 + \alpha_1 X_t + u_t. 
 $$
 
-where $\beta_1$ measures the expected change in healthcare excess return associated with a one-percentage-point increase in market excess return. This model assumes constant market sensitivity, regardless of the direction of market movements.
+In this model, a one-percentage-point increase in market excess return is associated with an $\alpha_1$-percentage-point change in fitted healthcare excess return. The model uses the same slope across the full range of market returns. 
 
-We then fit a piecewise regression that allows the slope to differ on either side of zero
-
+To allow market sensitivity to differ between negative and nonnegative months, we define $D_t = \mathbf{1}(X_t < 0)$ and fit 
 $$
-Y_t = \beta_0 + \beta_1 X_t
-+ \beta_2 X_t I(X_t < 0) + \varepsilon_t.
+Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t D_t + \varepsilon_t. 
 $$
+When $X_t \geq 0$, the interaction is zero and the slope is $\beta_1$. When $X_t <0$, the interaction equals $X_t$ and the slope is $\beta_1 + \beta_2$. Both segments have the fitted value $\beta_0$ at $X_t = 0$, so the regression is continuous at zero. Our parameter of interest is the negative-market slope minus the nonnegative-market slope, $(\beta_1 +\beta_2) - \beta_1 = \beta_2$. We test $H_0: \beta_2 = 0$ against $H_A: \beta_2 \ne 0$. Under the null, the piecewise model reduces to the single-slope model. 
 
-Both segments share the intercept $\beta_0$, so the fitted lines meet at zero market excess return. The slope is $\beta_1$ in nonnegative months and $\beta_1 + \beta_2$ in negative months. We estimate the difference, negative minus nonnegative, and test $H_0: \beta_2 = 0$ against the two-sided alternative.
+Let $\mathbf X$ denote the observed series of market excess returns. Conventional OLS standard errors assume that $\operatorname{Var}(\varepsilon_t \mid \mathbf X )= \sigma^2$ for every month and that $\operatorname{Cov}(\varepsilon_t, \varepsilon_s \mid \mathbf X) = 0$ for distinct months $t$ and $s$. Constant variance means that the spread of healthcare returns around the fitted relationship is the same across months. This assumption may be restrictive because the market return captures only part of what moves the healthcare portfolio. During periods of heightened uncertainty, the deviations from the fitted relationship may be larger and may stay large for several months.
 
-We fit both models by ordinary least squares. For the slope difference, we report a 95% confidence interval and a two-sided $p$ value using Newey-West HAC standard errors. We use a maximum lag of six months to allow for dependence over roughly half a year. We compare this result with conventional OLS inference and check how it changes with maximum lags of 0, 3, and 12 months. We also examine residuals against fitted values and inspect autocorrelations of the residuals and squared residuals.
+We plot residuals against fitted values to check whether their spread changes with the fitted return. We also examine the autocorrelations of raw and squared residuals. Raw residuals help detect whether positive or negative deviations persist. Squared residuals help detect whether large deviations tend to occur near one another in time. As supplemental checks, we use a studentized Breusch-Pagan test for variance related to the model regressors and a Bresch-Godfrey test for serial correlation through six months. 
 
-To assess influence, we rank months by absolute DFBETAS for the interaction coefficient. This measures how much the estimated slope difference changes when a month is left out, on a standardized scale. We refit the model omitting each of the three highest-ranked months individually and then all three together. The full sample remains the basis for the primary result.
+For $\beta_2$, we report the OLS estimate, a 95\% confidence interval, and a two-sided $p$-value using Newey-West heteroskedasticity-and-autocorrelation-consistent (HAC) standard errors. We use Bartlett weights and a maximum lag of six months, giving nearer months more weight in estimating the covariance. We compare the primary result with conventional OLS inference and with HAC calculations using maximum lags of 0, 3, and 12 months. 
+
+To assess influence, we rank months by the absolute DFBETAS for $\beta_2$, which measures the standardized changes in the estimated slope difference when a month is omitted. We refit the same model after omitting each of the three highest-ranked months individually and then all three together. The full sample remains the basis for the primary result. 
 
 ## Potential Concerns and Limitations
 
