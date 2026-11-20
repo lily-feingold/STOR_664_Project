@@ -41,6 +41,8 @@ November 29, 2026
 library(dplyr)
 library(ggplot2)
 library(httr2)
+library(sandwich)
+library(lmtest)
 
 theme_set(theme_minimal(base_size = 10))
 
@@ -225,6 +227,35 @@ n_negative <- sum(data$negative)
 n_nonnegative <- nrow(data) - n_negative
 ```
 
+```{r}
+#| label: hac-inference
+#| include: false
+
+# Primary inference: Newey-West HAC standard errors.
+hac_lag <- 6
+z_crit <- qnorm(0.975)
+
+# One helper so every HAC calculation uses the same settings:
+# Bartlett weights (NeweyWest default), fixed maximum lag,
+# no prewhitening, no small-sample adjustment.
+hac_vcov <- function(model, lag) {
+  NeweyWest(model, lag = lag, prewhite = FALSE, adjust = FALSE)
+}
+
+vcov_hac <- hac_vcov(model_asymmetric, hac_lag)
+
+beta2_hat <- unname(coef(model_asymmetric)["interaction"])
+
+# Robust z-test and 95% CI for beta_2 (normal reference distribution).
+beta2_hac_test <- coeftest(
+  model_asymmetric, vcov. = vcov_hac, df = Inf
+)["interaction", ]
+
+beta2_hac_ci <- coefci(
+  model_asymmetric, vcov. = vcov_hac, df = Inf
+)["interaction", ]
+```
+
 ```{=html}
 <!--
 =============================================================================
@@ -309,13 +340,11 @@ Target length: about 1–1.5 pages.
 
 Let $Y_t$\$Y_t\$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
 
-$$Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,$$
- {#eq-simple}
+$$Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,$$ {#eq-simple}
 
 and the asymmetric model adds an interaction with the negative-market indicator:
 
-$$Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.$$
- {#eq-asymmetric}
+$$Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.$$ {#eq-asymmetric}
 
 *TODO: Interpret the coefficients: the slope is* $\beta_1$ when $X_t \ge 0$ and $\beta_1 + \beta_2$ when $X_t < 0$. Note that the fitted line is continuous at zero (one shared intercept, no separate intercept shift).
 
@@ -337,21 +366,6 @@ $$H_0: \beta_2 = 0 \qquad \text{versus} \qquad H_A: \beta_2 \neq 0.$$
 
 *TODO: Describe each sensitivity analysis before reporting it in Section 3. From the plan: (1) influential observations (leverage, Cook's distance, refit without the most influential months); (2) estimates across subperiods (e.g., 2000–2009 vs. 2010–present, or excluding the 2008–09 crisis and the 2020 COVID crash).*
 
-### Extension: Other Industries (if included)
-
-*TODO: If we fit the same model to the other four industries, say so here, along with how we handle multiple comparisons (e.g., Bonferroni across 5 tests, or treating these as exploratory). Delete this subsection if we skip the extension.*
-
-```{=html}
-<!--
-=============================================================================
-3. RESULTS
-Rubric: "Explain the main findings in context, with useful figures or tables.
-Include at least one relevant model check or sensitivity analysis and explain
-what it revealed."
-Target length: about 1.5–2 pages including figures/tables.
-=============================================================================
--->
-```
 
 ## 3. Results
 
@@ -400,41 +414,33 @@ ggplot(data, aes(x = market, y = health)) +
 ```{r}
 #| label: tbl-models
 #| echo: false
-#| tbl-cap: "Estimated slopes from the baseline and asymmetric models, with 95% confidence intervals (classical OLS). TODO: add a robust-SE column if we use Newey–West standard errors."
+#| tbl-cap: "Estimated slopes with Newey–West HAC standard errors (Bartlett weights, maximum lag 6) and 95% confidence intervals."
 
-ci_simple <- confint(model_simple)["market", ]
-ci_asym <- confint(model_asymmetric)
+c_neg <- c(0, 1, 1)  # picks out beta_1 + beta_2
+se_hac <- sqrt(diag(vcov_hac))
+se_negative_hac <- sqrt(drop(t(c_neg) %*% vcov_hac %*% c_neg))
+se_simple_hac <- sqrt(hac_vcov(model_simple, hac_lag)["market", "market"])
 
-# CI for beta_1 + beta_2 (the down-market slope) via the covariance matrix.
-L <- c(0, 1, 1)
-se_negative <- sqrt(drop(t(L) %*% vcov(model_asymmetric) %*% L))
-t_crit <- qt(0.975, df.residual(model_asymmetric))
+estimates <- c(
+  coef(model_simple)["market"],
+  beta_positive,
+  beta_negative,
+  beta2_hat
+)
+ses <- c(se_simple_hac, se_hac["market"], se_negative_hac, se_hac["interaction"])
 
 model_table <- data.frame(
   Quantity = c(
-    "Single slope, $\\beta_1$ (Eq. 1)",
-    "Up-market slope, $\\beta_1$ (Eq. 2)",
-    "Down-market slope, $\\beta_1 + \\beta_2$ (Eq. 2)",
-    "Difference, $\\beta_2$ (Eq. 2)"
+    "Single slope, $\\alpha_1$",
+    "Nonnegative-market slope, $\\beta_1$",
+    "Negative-market slope, $\\beta_1 + \\beta_2$",
+    "Difference, $\\beta_2$"
   ),
-  Estimate = c(
-    coef(model_simple)["market"],
-    beta_positive,
-    beta_negative,
-    slope_difference
-  ),
-  Lower = c(
-    ci_simple[1],
-    ci_asym["market", 1],
-    beta_negative - t_crit * se_negative,
-    ci_asym["interaction", 1]
-  ),
-  Upper = c(
-    ci_simple[2],
-    ci_asym["market", 2],
-    beta_negative + t_crit * se_negative,
-    ci_asym["interaction", 2]
-  )
+  Estimate = unname(estimates),
+  `HAC SE` = unname(ses),
+  `CI lower` = unname(estimates - z_crit * ses),
+  `CI upper` = unname(estimates + z_crit * ses),
+  check.names = FALSE
 )
 
 knitr::kable(model_table, digits = 3, row.names = FALSE, escape = FALSE)
@@ -451,7 +457,7 @@ The estimated difference in slopes is $\hat\beta_2 =$ `r sprintf("%.3f", slope_d
 ```{r}
 #| label: fig-diagnostics
 #| echo: false
-#| fig-cap: "Residual diagnostics for the asymmetric model. TODO: write a caption that states what each panel shows."
+#| fig-cap: "Residual diagnostics for the piecewise model. (a) Residuals against fitted values. (b) Residuals over time. (c) Autocorrelation of residuals. (d) Autocorrelation of squared residuals. Dashed blue lines mark approximate 95% bounds under no autocorrelation."
 #| fig-width: 6.5
 #| fig-height: 4.2
 #| fig-align: center
@@ -464,35 +470,74 @@ diag_data <- data |>
 
 par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), cex = 0.75)
 
+# Residuals vs. fitted: does the spread change with the fitted return?
 plot(diag_data$fitted, diag_data$resid,
      xlab = "Fitted values", ylab = "Residuals",
-     main = "Residuals vs. fitted", pch = 16, col = "gray40")
+     main = "(a) Residuals vs. fitted", pch = 16, col = "gray40")
 abline(h = 0, lty = 2)
 
-qqnorm(diag_data$resid, main = "Normal Q-Q", pch = 16, col = "gray40")
-qqline(diag_data$resid)
-
+# Residuals over time: are there periods of larger deviations?
 plot(diag_data$date, diag_data$resid, type = "l",
-     xlab = "Month", ylab = "Residuals", main = "Residuals over time")
+     xlab = "Month", ylab = "Residuals", main = "(b) Residuals over time")
 abline(h = 0, lty = 2)
 
-acf(diag_data$resid, main = "Residual autocorrelation")
+# ACF of raw residuals: do positive or negative deviations persist?
+acf(diag_data$resid, lag.max = 24, main = "")
+title("(c) ACF of residuals", line = 0.8)
+
+# ACF of squared residuals: do large deviations cluster in time?
+acf(diag_data$resid^2, lag.max = 24, main = "")
+title("(d) ACF of squared residuals", line = 0.8)
 ```
 
 *TODO: Explain what each panel reveals: nonlinearity, heavy tails, volatility clustering over time (e.g., 2008–09, 2020), and autocorrelation. Say whether the classical standard errors are trustworthy.*
 
 ```{r}
-#| label: robust-se
-#| eval: false
+#| label: residual-tests
 #| include: false
 
-# STARTER CODE: Newey–West (HAC) standard errors.
-# Requires: install.packages(c("sandwich", "lmtest"))
-# Also add library(sandwich) and library(lmtest) to the setup chunk.
+bp_test <- bptest(model_asymmetric)          # studentized Breusch-Pagan
+bg_test <- bgtest(model_asymmetric, order = 6)  # Breusch-Godfrey, 6 lags
+```
 
-nw_vcov <- sandwich::NeweyWest(model_asymmetric, lag = 6, prewhite = FALSE)
-nw_test <- lmtest::coeftest(model_asymmetric, vcov. = nw_vcov)
-nw_ci <- lmtest::coefci(model_asymmetric, vcov. = nw_vcov)
+```{r}
+#| label: tbl-lag-comparison
+#| echo: false
+#| tbl-cap: "Inference for $\\beta_2$ under conventional OLS and Newey–West HAC standard errors with maximum lags of 0, 3, 6 (primary), and 12 months. The point estimate is the same in every row. SE ratio is each standard error divided by the OLS standard error."
+
+se_ols <- sqrt(vcov(model_asymmetric)["interaction", "interaction"])
+df_ols <- df.residual(model_asymmetric)
+
+summarize_beta2 <- function(method, se, crit, p) {
+  data.frame(
+    Method = method,
+    SE = se,
+    `CI lower` = beta2_hat - crit * se,
+    `CI upper` = beta2_hat + crit * se,
+    `p-value` = p,
+    `SE ratio` = se / se_ols,
+    check.names = FALSE
+  )
+}
+
+# Conventional OLS: t reference distribution with n - 3 df.
+ols_row <- summarize_beta2(
+  "Conventional OLS", se_ols,
+  crit = qt(0.975, df_ols),
+  p = 2 * pt(-abs(beta2_hat / se_ols), df_ols)
+)
+
+# HAC at each lag: normal reference distribution.
+hac_rows <- lapply(c(0, 3, 6, 12), function(lag) {
+  se <- sqrt(hac_vcov(model_asymmetric, lag)["interaction", "interaction"])
+  label <- paste0("HAC, lag ", lag, if (lag == hac_lag) " (primary)" else "")
+  summarize_beta2(label, se, crit = z_crit, p = 2 * pnorm(-abs(beta2_hat / se)))
+})
+
+lag_table <- rbind(ols_row, do.call(rbind, hac_rows))
+lag_table$`p-value` <- format.pval(lag_table$`p-value`, digits = 2, eps = 0.001)
+
+knitr::kable(lag_table, digits = 3, row.names = FALSE)
 ```
 
 *TODO: If we use robust standard errors, report how they change the conclusion for* $\beta_2$.
@@ -503,21 +548,50 @@ nw_ci <- lmtest::coefci(model_asymmetric, vcov. = nw_vcov)
 #| label: influence
 #| include: false
 
-# Influential observations for the asymmetric model.
+dfbetas_beta2 <- dfbetas(model_asymmetric)[, "interaction"]
+top_idx <- order(abs(dfbetas_beta2), decreasing = TRUE)[1:3]
 
-cooks <- cooks.distance(model_asymmetric)
-cooks_cutoff <- 4 / nrow(data)
-influential_months <- data$date[cooks > cooks_cutoff]
-
-model_no_influential <- lm(
-  health ~ market + interaction,
-  data = data[cooks <= cooks_cutoff, ]
+influential_months <- data.frame(
+  Month = format(data$date[top_idx], "%B %Y"),
+  market = data$market[top_idx],
+  health = data$health[top_idx],
+  dfbetas = dfbetas_beta2[top_idx]
 )
 
-beta2_no_influential <- unname(coef(model_no_influential)["interaction"])
+refit_row <- function(label, drop_idx = integer(0)) {
+  fit_data <- if (length(drop_idx) > 0) data[-drop_idx, ] else data
+  fit <- lm(health ~ market + interaction, data = fit_data)
+  est <- unname(coef(fit)["interaction"])
+  se <- sqrt(hac_vcov(fit, hac_lag)["interaction", "interaction"])
+  data.frame(
+    Sample = label,
+    Months = nobs(fit),
+    Estimate = est,
+    `HAC SE` = se,
+    `CI lower` = est - z_crit * se,
+    `CI upper` = est + z_crit * se,
+    check.names = FALSE
+  )
+}
+
+influence_table <- rbind(
+  refit_row("Full sample"),
+  do.call(rbind, lapply(seq_along(top_idx), function(i) {
+    refit_row(paste("Omit", influential_months$Month[i]), top_idx[i])
+  })),
+  refit_row("Omit all three", top_idx)
+)
 ```
 
-*TODO: Report how many months exceed the Cook's distance cutoff (*$4/n$ is a common rule of thumb; justify whichever cutoff we use), which months they are (crisis months?), and how $\hat\beta_2$ changes when they are excluded (currently `r sprintf("%.3f", beta2_no_influential)` vs. `r sprintf("%.3f", slope_difference)` in the full sample).
+```{r}
+#| label: tbl-influence
+#| echo: false
+#| tbl-cap: "Sensitivity of $\\hat\\beta_2$ to the three months with the largest absolute DFBETAS. Intervals use HAC standard errors (maximum lag 6)."
+
+knitr::kable(influence_table, digits = 3, row.names = FALSE)
+```
+
+The three most influential months for $\hat\beta_2$ are `r paste(influential_months$Month, collapse = ", ")`, with DFBETAS of `r paste(sprintf("%.2f", influential_months$dfbetas), collapse = ", ")`.
 
 ```{r}
 #| label: tbl-subperiods
@@ -552,38 +626,6 @@ knitr::kable(subperiod_table, digits = 3, row.names = FALSE)
 *TODO: Interpret the subperiod results. Is the conclusion stable across periods?*
 
 ### Extension: Other Industries (if included)
-
-```{r}
-#| label: tbl-industries
-#| echo: false
-#| eval: false
-#| tbl-cap: "Asymmetric model fit separately to each of the five industry portfolios. TODO: state the multiple-comparison adjustment."
-
-# STARTER CODE: switch to eval: true if we include the extension.
-
-industry_cols <- c(
-  Consumer = "Cnsmr", Manufacturing = "Manuf", Technology = "HiTec",
-  Healthcare = "Hlth", Other = "Other"
-)
-
-industry_table <- do.call(rbind, lapply(names(industry_cols), function(name) {
-  y <- data[[industry_cols[[name]]]] - data$RF
-  fit <- lm(y ~ market + interaction, data = data)
-  est <- summary(fit)$coefficients["interaction", ]
-  data.frame(
-    Industry = name,
-    `Up slope` = unname(coef(fit)["market"]),
-    `Down slope` = unname(sum(coef(fit)[c("market", "interaction")])),
-    `Difference` = unname(est["Estimate"]),
-    `p-value` = unname(est["Pr(>|t|)"]),
-    check.names = FALSE
-  )
-}))
-
-industry_table$`Bonferroni p` <- pmin(1, industry_table$`p-value` * nrow(industry_table))
-
-knitr::kable(industry_table, digits = 3, row.names = FALSE)
-```
 
 *TODO: Interpret the cross-industry comparison (essential vs. discretionary industries), or delete this subsection.*
 
