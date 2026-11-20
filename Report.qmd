@@ -248,8 +248,6 @@ Target length: about 1 page.
 
 ### Data
 
-### Data
-
 We obtain monthly financial data from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html), combining two publicly available datasets: the *Five Industry Portfolios* and the *Fama–French Research Data Factors*. The industry dataset provides value-weighted monthly returns for five broad U.S. industry portfolios: consumer, manufacturing, technology, healthcare, and other. Stocks are assigned to industries based on their Standard Industrial Classification (SIC) codes, and portfolio returns are weighted by market capitalization. The Fama–French factors dataset provides the market excess return (`Mkt-RF`) and the risk-free rate (`RF`), based on a broad U.S. equity market portfolio and one-month Treasury bill returns, respectively.
 
 Our primary response variable is healthcare excess return, defined as the healthcare portfolio return (`Hlth`) minus the risk-free rate (`RF`). The explanatory variable is market excess return (`Mkt-RF`), which is already expressed relative to the risk-free rate. To investigate asymmetric market sensitivity, we construct an indicator equal to one when market excess return is negative and zero otherwise, along with an interaction between this indicator and market excess return. This interaction allows the estimated market sensitivity to differ between positive and negative market conditions. All returns are measured in percentage points.
