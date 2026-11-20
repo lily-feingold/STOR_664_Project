@@ -1,6 +1,4 @@
-
 ---
-title: false
 format:
   pdf:
     geometry: margin=0.8in
@@ -15,7 +13,7 @@ execute:
 
 \begin{center}
 {\large\textbf{Do Industry Portfolios Respond Differently to Market Gains and Losses?}}\\[3pt]
-STOR 664 Project Proposal\\[3pt]
+STOR 664 Project \\[3pt]
 Manas Dhawan, Lily Feingold, Sebastian Sec, and Tommy Smith\\[2pt]
 November 5, 2026
 \end{center}
@@ -33,7 +31,7 @@ theme_set(theme_minimal(base_size = 10))
 start_date <- as.Date("2000-01-01")
 ```
 
-## Research Question and Motivation
+## Introduction
 
 Suppose the stock market rises by 5% in a given month, and the healthcare industry rises by 3%. Would we expect healthcare stocks to fall by 3% if the market instead declined by 5%? At first glance, it seems reasonable that an industry's response to the market should be the same regardless of whether the market is going up or down. But is that necessarily true?
 
@@ -45,13 +43,13 @@ On the other hand, an industry's exposure to broader economic conditions might r
 
 In financial economics, a common approach is to model an industry's *excess return* (its return above the risk-free rate) as a linear function of the market's excess return. The slope of this regression, often called the industry's *beta*, measures its sensitivity to movements in the broader market. The standard model assumes this sensitivity remains constant regardless of the direction of market movements.
 
-**Our primary research question is whether an industry's sensitivity to market movements differs between periods of positive and negative market excess returns.** We will investigate this question using linear regression, focusing initially on healthcare, with comparisons across other industries as a possible extension. Our goal is hypothesis testing and estimation rather than prediction or inference.
+We want to estimate how sensitive U.S. healthcare excess returns are to market excess returns and test whether that sensitivity differs between negative and nonnegative market months.
 
 ## Data
 
-We will use publicly available monthly financial data from the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html). We combine the *Five Industry Portfolios* dataset, containing value-weighted returns for consumer, manufacturing, technology, healthcare, and other industries, with the *Fama–French Research Data Factors*, which provide market excess returns and risk-free rates.
+We use monthly returns from the publicly available [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html). Our cleaned workbook combines the value-weighted healthcare portfolio from the Five Industry Portfolios with the market excess return and risk-free rate from the Fama/French Research Data factors. Each observation is one month. The sample includes 321 consecutive months from January 2000 through September 2026. In 122 months the market excess return was negative, and in 199 it was nonnegative.
 
-Each observation represents one month. For our primary analysis, we consider data from January 2000 onward, defining healthcare excess return as the industry's return minus the risk-free rate. Our primary predictor is the market's excess return.
+We calculate healthcare excess return by subtracting the monthly risk-free rate from the healthcare portfolio return. We use the workbook's \texttt{Mkt-RF} column for market excess return. Both variables are on the percent scale, so a change from 2 to 3 is a one-percentage-point increase. We check that each month appears once, that no months are missing, and that the excess-return calculations agree with the workbook. All 321 months enter the primary analysis.
 
 ```{r}
 #| label: load-data
@@ -213,14 +211,6 @@ stopifnot(
 
 Our dataset contains `r nrow(data)` monthly observations, spanning `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`. We focus on this more recent period to study a relationship relevant to contemporary financial markets.
 
-Here is the code for uploading the data set
-
-```{r}
-library(readxl)
-
-df <- read_excel("data/STOR664_Data_Month_Year.xlsx")
-```
-
 ## Exploratory Analysis
 
 @fig-healthcare plots monthly healthcare excess returns against market excess returns, together with fitted regression lines allowing different slopes for positive and negative market excess returns.
@@ -324,9 +314,9 @@ The estimated slopes are `r sprintf("%.2f", beta_positive)` for nonnegative mark
 
 The scatterplot also reveals considerable variation around the fitted lines, with several observations corresponding to particularly large market movements. We will investigate whether these observations disproportionately influence our estimated slopes.
 
-## Proposed Statistical Methods
+## Methods
 
-Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. We begin with the standard linear regression model
+Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. We first fit a single-slope regression of healthcare excess return on market excess return
 
 $$
 Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,
@@ -334,30 +324,18 @@ $$
 
 where $\beta_1$ measures the expected change in healthcare excess return associated with a one-percentage-point increase in market excess return. This model assumes constant market sensitivity, regardless of the direction of market movements.
 
-To investigate whether this assumption is appropriate, we introduce an interaction term:
+We then fit a piecewise regression that allows the slope to differ on either side of zero
 
 $$
 Y_t = \beta_0 + \beta_1 X_t
 + \beta_2 X_t I(X_t < 0) + \varepsilon_t.
 $$
 
-Although this model allows for different slopes, it remains linear in the regression coefficients and can be estimated using ordinary least squares.
+Both segments share the intercept $\beta_0$, so the fitted lines meet at zero market excess return. The slope is $\beta_1$ in nonnegative months and $\beta_1 + \beta_2$ in negative months. We estimate the difference, negative minus nonnegative, and test $H_0: \beta_2 = 0$ against the two-sided alternative.
 
-When $X_t \geq 0$, the indicator is zero, and the slope is $\beta_1$. When $X_t < 0$, the slope becomes $\beta_1 + \beta_2$. Thus, $\beta_2$ measures the difference in market sensitivity between negative and nonnegative market excess returns.
+We fit both models by ordinary least squares. For the slope difference, we report a 95% confidence interval and a two-sided $p$ value using Newey-West HAC standard errors. We use a maximum lag of six months to allow for dependence over roughly half a year. We compare this result with conventional OLS inference and check how it changes with maximum lags of 0, 3, and 12 months. We also examine residuals against fitted values and inspect autocorrelations of the residuals and squared residuals.
 
-This motivates our primary hypothesis test:
-
-$$
-H_0: \beta_2 = 0
-\qquad \text{versus} \qquad
-H_A: \beta_2 \neq 0.
-$$
-
-Under the null hypothesis, a single slope adequately describes the relationship. Under the alternative, the slopes differ depending on the direction of market excess returns.
-
-We will estimate both models using ordinary least squares and conduct a two-sided $t$-test for $\beta_2$, equivalent under standard assumptions to a partial $F$-test comparing the nested models. We will report confidence intervals and compare model fit to assess whether the additional interaction term provides a meaningful improvement.
-
-If time permits, we may extend this analysis to other industries to investigate whether patterns of market sensitivity differ between industries providing essential goods and services and those more dependent on discretionary spending.
+To assess influence, we rank months by absolute DFBETAS for the interaction coefficient. This measures how much the estimated slope difference changes when a month is left out, on a standardized scale. We refit the model omitting each of the three highest-ranked months individually and then all three together. The full sample remains the basis for the primary result.
 
 ## Potential Concerns and Limitations
 
@@ -377,5 +355,4 @@ https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
 
 As a group, we discussed potential project topics, brainstormed various ideas, and evaluated possible datasets before agreeing to focus on financial data. Once we finalized our topic, we designated one group member to prepare the initial draft of the proposal. The remaining group members contributed by reviewing and editing the document, refining existing sections, and suggesting adjustments and alternative approaches to the proposed methodology. This collaborative process ensured that all group members contributed to the development of the final proposal.
 
-We used ChatGPT to assist with writing and organizing R code for downloading, combining, and preparing the two publicly available datasets. To check the data preparation, we implemented automated validation tests using `stopifnot()` in R. These tests check for duplicate monthly observations, missing or nonfinite values in key variables, chronological consistency, and correct construction of excess returns and the interaction term. The tests are executed when the document renders and halt execution if an assertion fails. We also used ChatGPT to help improve the conciseness of the proposal. Specifically, we asked it to suggest passages that could be shortened or removed, then independently evaluated these recommendations and decided which changes to incorporate. 
-
+We used ChatGPT to assist with writing and organizing R code for downloading, combining, and preparing the two publicly available datasets. To check the data preparation, we implemented automated validation tests using `stopifnot()` in R. These tests check for duplicate monthly observations, missing or nonfinite values in key variables, chronological consistency, and correct construction of excess returns and the interaction term. The tests are executed when the document renders and halt execution if an assertion fails. We also used ChatGPT to help improve the conciseness of the proposal. Specifically, we asked it to suggest passages that could be shortened or removed, then independently evaluated these recommendations and decided which changes to incorporate.
