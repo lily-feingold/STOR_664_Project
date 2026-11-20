@@ -1,0 +1,642 @@
+
+---
+title: false
+format:
+  pdf:
+    geometry: margin=0.8in
+    fontsize: 10pt
+    fig-pos: H
+    linestretch: 1.05
+editor: source
+execute:
+  warning: false
+  message: false
+---
+
+<!--
+REPORT SKELETON
+Rubric: 4–6 pages including figures and tables, excluding references and the
+optional appendix. Four required sections: Introduction, Methods, Results,
+Discussion. Due Sunday, November 29, 11:59 p.m. Eastern (with the code ZIP).
+
+Conventions in this file:
+  - "TODO:" lines in italics are visible placeholders. Delete each one once
+    the text is written, so none reach the submitted PDF.
+  - Code chunks marked `eval: false` are starter code. Check it, then switch
+    to `eval: true` (or delete the line) when the section is ready.
+  - Rubric requirements are quoted in comments like this one.
+-->
+
+\begin{center}
+{\large\textbf{Do Industry Portfolios Respond Differently to Market Gains and Losses?}}\\[3pt]
+STOR 664 Final Report\\[3pt]
+Manas Dhawan, Lily Feingold, Sebastian Sec, and Tommy Smith\\[2pt]
+November 29, 2026
+\end{center}
+
+```{r}
+#| label: setup
+#| include: false
+
+library(dplyr)
+library(ggplot2)
+library(httr2)
+
+theme_set(theme_minimal(base_size = 10))
+
+set.seed(664)  # Only matters if we add simulation or bootstrap steps.
+
+start_date <- as.Date("2000-01-01")
+```
+
+```{r}
+#| label: load-data
+#| include: false
+
+# Same data pipeline as the plan (STOR_664_Project.qmd).
+# Download the publicly available French data archives.
+
+base_url <- paste0(
+  "https://mba.tuck.dartmouth.edu/pages/",
+  "faculty/ken.french/ftp/"
+)
+
+download_french <- function(filename) {
+  destination <- tempfile(fileext = ".zip")
+
+  request(paste0(base_url, filename)) |>
+    req_user_agent("Mozilla/5.0") |>
+    req_perform(path = destination)
+
+  extraction_dir <- tempfile()
+  dir.create(extraction_dir)
+
+  files <- unzip(destination, exdir = extraction_dir)
+
+  csv_file <- files[
+    grepl("\\.csv$", files, ignore.case = TRUE)
+  ][1]
+
+  readLines(csv_file, warn = FALSE)
+}
+
+# Extract the monthly table, excluding annual summaries.
+
+read_monthly <- function(lines) {
+  monthly <- grepl("^\\s*[0-9]{6}\\s*,", lines)
+
+  first <- which(monthly)[1]
+  last <- first
+
+  while (last < length(lines) && monthly[last + 1]) {
+    last <- last + 1
+  }
+
+  block <- lines[c(first - 1, first:last)]
+
+  result <- read.csv(
+    text = paste(block, collapse = "\n"),
+    check.names = FALSE,
+    strip.white = TRUE
+  )
+
+  names(result)[1] <- "ym"
+  result$ym <- as.character(result$ym)
+
+  result
+}
+
+industry_raw <- read_monthly(
+  download_french("5_Industry_Portfolios_CSV.zip")
+)
+
+factors_raw <- read_monthly(
+  download_french("F-F_Research_Data_Factors_CSV.zip")
+)
+
+# Retain monthly returns, reported in percentage points.
+
+industry <- industry_raw |>
+  select(ym, Cnsmr, Manuf, HiTec, Hlth, Other)
+
+factors <- factors_raw |>
+  select(ym, `Mkt-RF`, RF)
+
+data <- inner_join(industry, factors, by = "ym") |>
+  mutate(
+    date = as.Date(
+      paste0(ym, "01"),
+      format = "%Y%m%d"
+    ),
+    market = `Mkt-RF`,
+    health = Hlth - RF,
+    negative = as.integer(market < 0),
+    interaction = market * negative
+  ) |>
+  filter(
+    date >= start_date,
+    if_all(
+      c(market, health),
+      ~ !is.na(.x) & .x > -99
+    )
+  ) |>
+  arrange(date)
+
+# TODO: If we pin the sample to a fixed end date for reproducibility
+# (the French library updates monthly), add e.g.
+#   end_date <- as.Date("2026-09-01")
+# to the setup chunk and filter(date <= end_date) here.
+```
+
+```{r}
+#| label: data-validation
+#| include: false
+
+# Automated data integrity checks (unchanged from the plan).
+# Execution stops if any assertion fails.
+
+stopifnot(
+  !anyDuplicated(industry$ym),
+  !anyDuplicated(factors$ym)
+)
+
+stopifnot(
+  nrow(data) > 0,
+  all(!is.na(data$date)),
+  !anyDuplicated(data$date),
+  all(data$date >= start_date),
+  identical(data$date, sort(data$date))
+)
+
+stopifnot(
+  all(is.finite(data$market)),
+  all(is.finite(data$health)),
+  all(is.finite(data$RF))
+)
+
+stopifnot(
+  isTRUE(all.equal(data$health, data$Hlth - data$RF)),
+  isTRUE(all.equal(data$market, data[["Mkt-RF"]]))
+)
+
+stopifnot(
+  identical(data$negative, as.integer(data$market < 0)),
+  isTRUE(all.equal(data$interaction, data$market * data$negative))
+)
+
+expected_months <- seq(
+  from = min(data$date),
+  to = max(data$date),
+  by = "month"
+)
+
+stopifnot(identical(data$date, expected_months))
+```
+
+```{r}
+#| label: main-models
+#| include: false
+
+# Primary models from the plan.
+
+model_simple <- lm(health ~ market, data = data)
+
+model_asymmetric <- lm(health ~ market + interaction, data = data)
+
+beta_positive <- unname(coef(model_asymmetric)["market"])
+
+beta_negative <- unname(
+  coef(model_asymmetric)["market"] +
+    coef(model_asymmetric)["interaction"]
+)
+
+slope_difference <- beta_negative - beta_positive  # equals beta_2-hat
+
+# Inference for beta_2 (classical OLS).
+beta2_summary <- summary(model_asymmetric)$coefficients["interaction", ]
+beta2_ci <- confint(model_asymmetric)["interaction", ]
+
+# Partial F-test comparing the nested models (equivalent to the t-test).
+nested_test <- anova(model_simple, model_asymmetric)
+
+n_negative <- sum(data$negative)
+n_nonnegative <- nrow(data) - n_negative
+```
+
+<!--
+=============================================================================
+1. INTRODUCTION
+Rubric: "Introduce the question, provide important background and context,
+describe the data and important cleaning decisions, and identify the
+population or setting your conclusions concern. You do not need a
+comprehensive literature review of the area."
+Target length: about 1 page.
+=============================================================================
+-->
+
+## 1. Introduction
+
+### Question and Motivation
+
+*TODO: Introduce the question with the 5% market example from the plan. Briefly motivate it with loss aversion and the "defensive" nature of healthcare. Revise the plan's text rather than copying it; keep this to 2–3 short paragraphs.*
+
+*TODO: Define excess return and beta in one or two sentences.*
+
+*TODO: State the primary research question in bold, as in the plan, and the goal (hypothesis testing and estimation). Note: the plan says "rather than prediction or inference", but hypothesis testing **is** inference. Reword to something like "rather than prediction".*
+
+### Data
+
+*TODO: Data source (cite the Kenneth R. French Data Library), the two datasets (Five Industry Portfolios, value-weighted; Fama–French Research Data Factors), and what one observation is (one month).*
+
+*TODO: Variables. Response: healthcare excess return (`Hlth` − `RF`). Predictor: market excess return (`Mkt-RF`). Derived: the negative-market indicator and the interaction term. All returns are in percentage points.*
+
+*TODO: Sample size and period. The inline code below fills itself in.*
+
+Our analysis sample contains `r nrow(data)` monthly observations from `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`, of which `r n_negative` months had negative market excess returns and `r n_nonnegative` had nonnegative ones.
+
+*TODO: Cleaning decisions. Explain why we use January 2000 onward; that the files code missing values as −99.99 and we drop them; that we keep only the monthly tables, not the annual summaries; the inner join on month; and the automated validation checks. Add the end date if we pin one.*
+
+```{r}
+#| label: tbl-summary
+#| echo: false
+#| tbl-cap: "Summary statistics for monthly excess returns (percentage points). TODO: decide whether to keep this table or move it to the appendix."
+
+summary_table <- data |>
+  mutate(Regime = ifelse(negative == 1, "Negative market", "Nonnegative market")) |>
+  group_by(Regime) |>
+  summarise(
+    Months = n(),
+    `Mean market` = mean(market),
+    `SD market` = sd(market),
+    `Mean healthcare` = mean(health),
+    `SD healthcare` = sd(health)
+  )
+
+knitr::kable(summary_table, digits = 2)
+```
+
+### Setting of Our Conclusions
+
+*TODO: Name the population/setting our conclusions apply to. For example: value-weighted U.S. healthcare stocks (NYSE, AMEX, and NASDAQ) relative to the U.S. market, monthly horizon, 2000 to present. Say what we are **not** claiming: other countries, daily returns, individual stocks, or future periods.*
+
+<!--
+=============================================================================
+2. METHODS
+Rubric: "Explain your models, choices, and assumptions. Describe how you
+assessed uncertainty or predictive performance."
+Target length: about 1–1.5 pages.
+=============================================================================
+-->
+
+## 2. Methods
+
+### Models
+
+Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
+
+$$
+Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,
+$$ {#eq-simple}
+
+and the asymmetric model adds an interaction with the negative-market indicator:
+
+$$
+Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.
+$$ {#eq-asymmetric}
+
+*TODO: Interpret the coefficients: the slope is $\beta_1$ when $X_t \ge 0$ and $\beta_1 + \beta_2$ when $X_t < 0$. Note that the fitted line is continuous at zero (one shared intercept, no separate intercept shift).*
+
+*TODO: Justify modeling choices. Why break at zero rather than at another threshold? Why no separate intercept for down markets? Why excess returns rather than raw returns?*
+
+### Hypothesis Test and Estimation
+
+$$
+H_0: \beta_2 = 0 \qquad \text{versus} \qquad H_A: \beta_2 \neq 0.
+$$
+
+*TODO: Describe the two-sided $t$-test for $\beta_2$ and its equivalence to the partial $F$-test comparing @eq-simple and @eq-asymmetric. State the significance level ($\alpha = 0.05$?). Say that we report point estimates and 95% confidence intervals for $\beta_1$, $\beta_1 + \beta_2$, and $\beta_2$.*
+
+### Assumptions and Assessing Uncertainty
+
+*TODO: List the OLS assumptions behind the classical standard errors (linearity, independent errors, constant variance; normality for exact small-sample inference). For each one, say how we checked it (see the model checks in Section 3).*
+
+*TODO: If the checks show heteroskedasticity or autocorrelation (the main concern in the plan), describe the remedy. Options: heteroskedasticity- and autocorrelation-consistent (Newey–West) standard errors, or a bootstrap. State the lag choice.*
+
+### Sensitivity Analyses
+
+*TODO: Describe each sensitivity analysis before reporting it in Section 3. From the plan: (1) influential observations (leverage, Cook's distance, refit without the most influential months); (2) estimates across subperiods (e.g., 2000–2009 vs. 2010–present, or excluding the 2008–09 crisis and the 2020 COVID crash).*
+
+### Extension: Other Industries (if included)
+
+*TODO: If we fit the same model to the other four industries, say so here, along with how we handle multiple comparisons (e.g., Bonferroni across 5 tests, or treating these as exploratory). Delete this subsection if we skip the extension.*
+
+<!--
+=============================================================================
+3. RESULTS
+Rubric: "Explain the main findings in context, with useful figures or tables.
+Include at least one relevant model check or sensitivity analysis and explain
+what it revealed."
+Target length: about 1.5–2 pages including figures/tables.
+=============================================================================
+-->
+
+## 3. Results
+
+### Main Findings
+
+```{r}
+#| label: fig-healthcare
+#| echo: false
+#| fig-cap: "Healthcare excess returns versus market excess returns, with the fitted asymmetric model (@eq-asymmetric). The slope may differ on either side of zero."
+#| fig-width: 5.8
+#| fig-height: 2.65
+#| fig-align: center
+
+plot_data <- data.frame(
+  market = seq(min(data$market), max(data$market), length.out = 300)
+)
+plot_data$interaction <- plot_data$market * (plot_data$market < 0)
+plot_data$fitted <- predict(model_asymmetric, newdata = plot_data)
+plot_data$direction <- ifelse(
+  plot_data$market < 0,
+  "Negative market excess return",
+  "Nonnegative market excess return"
+)
+
+ggplot(data, aes(x = market, y = health)) +
+  geom_point(alpha = 0.35, color = "gray45", size = 1.2) +
+  geom_line(
+    data = plot_data,
+    aes(x = market, y = fitted, color = direction),
+    linewidth = 1,
+    inherit.aes = FALSE
+  ) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+  labs(
+    x = "Market excess return (%)",
+    y = "Healthcare excess return (%)",
+    color = NULL
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    plot.margin = margin(2, 2, 2, 2)
+  )
+```
+
+```{r}
+#| label: tbl-models
+#| echo: false
+#| tbl-cap: "Estimated slopes from the baseline and asymmetric models, with 95% confidence intervals (classical OLS). TODO: add a robust-SE column if we use Newey–West standard errors."
+
+ci_simple <- confint(model_simple)["market", ]
+ci_asym <- confint(model_asymmetric)
+
+# CI for beta_1 + beta_2 (the down-market slope) via the covariance matrix.
+L <- c(0, 1, 1)
+se_negative <- sqrt(drop(t(L) %*% vcov(model_asymmetric) %*% L))
+t_crit <- qt(0.975, df.residual(model_asymmetric))
+
+model_table <- data.frame(
+  Quantity = c(
+    "Single slope, $\\beta_1$ (Eq. 1)",
+    "Up-market slope, $\\beta_1$ (Eq. 2)",
+    "Down-market slope, $\\beta_1 + \\beta_2$ (Eq. 2)",
+    "Difference, $\\beta_2$ (Eq. 2)"
+  ),
+  Estimate = c(
+    coef(model_simple)["market"],
+    beta_positive,
+    beta_negative,
+    slope_difference
+  ),
+  Lower = c(
+    ci_simple[1],
+    ci_asym["market", 1],
+    beta_negative - t_crit * se_negative,
+    ci_asym["interaction", 1]
+  ),
+  Upper = c(
+    ci_simple[2],
+    ci_asym["market", 2],
+    beta_negative + t_crit * se_negative,
+    ci_asym["interaction", 2]
+  )
+)
+
+knitr::kable(model_table, digits = 3, row.names = FALSE, escape = FALSE)
+```
+
+*TODO: Report the test of $H_0: \beta_2 = 0$ in words, using the inline values below, and interpret it in context (e.g., "a 1-point market decline is associated with ..."). Remember that a non-significant result is fine: explain what the confidence interval does and does not rule out.*
+
+The estimated difference in slopes is $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)` (95% CI `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])`; $t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`).
+
+*TODO: Compare model fit (e.g., $R^2$, adjusted $R^2$, residual standard error) between the two models.*
+
+### Model Checks
+
+```{r}
+#| label: fig-diagnostics
+#| echo: false
+#| fig-cap: "Residual diagnostics for the asymmetric model. TODO: write a caption that states what each panel shows."
+#| fig-width: 6.5
+#| fig-height: 4.2
+#| fig-align: center
+
+diag_data <- data |>
+  mutate(
+    fitted = fitted(model_asymmetric),
+    resid = resid(model_asymmetric)
+  )
+
+par(mfrow = c(2, 2), mar = c(4, 4, 2, 1), cex = 0.75)
+
+plot(diag_data$fitted, diag_data$resid,
+     xlab = "Fitted values", ylab = "Residuals",
+     main = "Residuals vs. fitted", pch = 16, col = "gray40")
+abline(h = 0, lty = 2)
+
+qqnorm(diag_data$resid, main = "Normal Q-Q", pch = 16, col = "gray40")
+qqline(diag_data$resid)
+
+plot(diag_data$date, diag_data$resid, type = "l",
+     xlab = "Month", ylab = "Residuals", main = "Residuals over time")
+abline(h = 0, lty = 2)
+
+acf(diag_data$resid, main = "Residual autocorrelation")
+```
+
+*TODO: Explain what each panel reveals: nonlinearity, heavy tails, volatility clustering over time (e.g., 2008–09, 2020), and autocorrelation. Say whether the classical standard errors are trustworthy.*
+
+```{r}
+#| label: robust-se
+#| eval: false
+#| include: false
+
+# STARTER CODE: Newey–West (HAC) standard errors.
+# Requires: install.packages(c("sandwich", "lmtest"))
+# Also add library(sandwich) and library(lmtest) to the setup chunk.
+
+nw_vcov <- sandwich::NeweyWest(model_asymmetric, lag = 6, prewhite = FALSE)
+nw_test <- lmtest::coeftest(model_asymmetric, vcov. = nw_vcov)
+nw_ci <- lmtest::coefci(model_asymmetric, vcov. = nw_vcov)
+```
+
+*TODO: If we use robust standard errors, report how they change the conclusion for $\beta_2$.*
+
+### Sensitivity Analyses
+
+```{r}
+#| label: influence
+#| include: false
+
+# Influential observations for the asymmetric model.
+
+cooks <- cooks.distance(model_asymmetric)
+cooks_cutoff <- 4 / nrow(data)
+influential_months <- data$date[cooks > cooks_cutoff]
+
+model_no_influential <- lm(
+  health ~ market + interaction,
+  data = data[cooks <= cooks_cutoff, ]
+)
+
+beta2_no_influential <- unname(coef(model_no_influential)["interaction"])
+```
+
+*TODO: Report how many months exceed the Cook's distance cutoff ($4/n$ is a common rule of thumb; justify whichever cutoff we use), which months they are (crisis months?), and how $\hat\beta_2$ changes when they are excluded (currently `r sprintf("%.3f", beta2_no_influential)` vs. `r sprintf("%.3f", slope_difference)` in the full sample).*
+
+```{r}
+#| label: tbl-subperiods
+#| echo: false
+#| tbl-cap: "Asymmetric model estimates by subperiod. TODO: confirm the subperiod boundaries."
+
+subperiods <- list(
+  "2000–2009" = c(as.Date("2000-01-01"), as.Date("2009-12-01")),
+  "2010–present" = c(as.Date("2010-01-01"), max(data$date))
+)
+
+subperiod_table <- do.call(rbind, lapply(names(subperiods), function(name) {
+  bounds <- subperiods[[name]]
+  sub <- data[data$date >= bounds[1] & data$date <= bounds[2], ]
+  fit <- lm(health ~ market + interaction, data = sub)
+  ci <- confint(fit)["interaction", ]
+  data.frame(
+    Period = name,
+    Months = nrow(sub),
+    `Up slope` = unname(coef(fit)["market"]),
+    `Down slope` = unname(sum(coef(fit)[c("market", "interaction")])),
+    `Difference` = unname(coef(fit)["interaction"]),
+    `CI lower` = unname(ci[1]),
+    `CI upper` = unname(ci[2]),
+    check.names = FALSE
+  )
+}))
+
+knitr::kable(subperiod_table, digits = 3, row.names = FALSE)
+```
+
+*TODO: Interpret the subperiod results. Is the conclusion stable across periods?*
+
+### Extension: Other Industries (if included)
+
+```{r}
+#| label: tbl-industries
+#| echo: false
+#| eval: false
+#| tbl-cap: "Asymmetric model fit separately to each of the five industry portfolios. TODO: state the multiple-comparison adjustment."
+
+# STARTER CODE: switch to eval: true if we include the extension.
+
+industry_cols <- c(
+  Consumer = "Cnsmr", Manufacturing = "Manuf", Technology = "HiTec",
+  Healthcare = "Hlth", Other = "Other"
+)
+
+industry_table <- do.call(rbind, lapply(names(industry_cols), function(name) {
+  y <- data[[industry_cols[[name]]]] - data$RF
+  fit <- lm(y ~ market + interaction, data = data)
+  est <- summary(fit)$coefficients["interaction", ]
+  data.frame(
+    Industry = name,
+    `Up slope` = unname(coef(fit)["market"]),
+    `Down slope` = unname(sum(coef(fit)[c("market", "interaction")])),
+    `Difference` = unname(est["Estimate"]),
+    `p-value` = unname(est["Pr(>|t|)"]),
+    check.names = FALSE
+  )
+}))
+
+industry_table$`Bonferroni p` <- pmin(1, industry_table$`p-value` * nrow(industry_table))
+
+knitr::kable(industry_table, digits = 3, row.names = FALSE)
+```
+
+*TODO: Interpret the cross-industry comparison (essential vs. discretionary industries), or delete this subsection.*
+
+<!--
+=============================================================================
+4. DISCUSSION
+Rubric: "What did you learn? What remains uncertain? Discuss limitations,
+distinguish association from causation where relevant, and explain
+substantial changes from your plan. Address exploration, model selection,
+and multiple comparisons when they affect your claims. An inconclusive
+answer is acceptable. Explain what the evidence supports."
+Target length: about 0.75–1 page.
+=============================================================================
+-->
+
+## 4. Discussion
+
+### What We Learned
+
+*TODO: Answer the research question directly, in one or two sentences, and say how strong the evidence is.*
+
+### What Remains Uncertain
+
+*TODO: What the confidence interval for $\beta_2$ can and cannot rule out. Whether the results depend on the sample period or a few extreme months.*
+
+### Limitations
+
+*TODO: Assumption violations found in Section 3 and how much they matter. The choice of break point at zero. Only five broad industries. Value-weighted portfolios are dominated by large firms.*
+
+*TODO: Association vs. causation. These are contemporaneous returns: the results do not show that market moves cause healthcare moves, and do not allow us to predict future returns.*
+
+### Changes from the Plan
+
+*TODO: List any substantial changes from the November 5 plan and why we made them (e.g., added robust standard errors, specific subperiods chosen, the extension included or dropped).*
+
+### Exploration, Model Selection, and Multiple Comparisons
+
+*TODO: Be honest about what was exploratory. The plan's figure already showed the slopes; did that affect our choices? If we tested several industries or subperiods, how does that affect the strength of any single significant result?*
+
+## References
+
+French, Kenneth R. *Kenneth R. French Data Library.* <https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html>. Accessed *TODO: date*.
+
+*TODO: Add any other sources (e.g., for loss aversion, Newey–West standard errors, the R packages used), in one consistent format.*
+
+## Contributions and Acknowledgments
+
+<!--
+Rubric: "acknowledge each member's contributions and outside help, including
+how you used AI and checked its work. State if you used no outside help."
+-->
+
+*TODO: Each member's contributions to the report and the code, by name:*
+
+- *Manas Dhawan: TODO*
+- *Lily Feingold: TODO*
+- *Sebastian Sec: TODO*
+- *Tommy Smith: TODO*
+
+*TODO: Outside help and AI use. Carry over the ChatGPT acknowledgment from the plan and add any new uses (including Claude, which was used to draft this report skeleton), and how we checked each one.*
+
+<!--
+Optional appendix: does not count toward the 4–6 page limit. Good place for
+extra diagnostics, the full regression output, or the full industry table.
+-->
+
+## Appendix (optional)
+
+*TODO: Supplementary figures and tables, or delete this section.*
