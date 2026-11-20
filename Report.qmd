@@ -236,17 +236,19 @@ comprehensive literature review of the area."
 Target length: about 1 page.
 =============================================================================
 -->
-```
+``` 
 
 ## 1. Introduction
 
 ### Question and Motivation
 
-*TODO: Introduce the question with the 5% market example from the plan. Briefly motivate it with loss aversion and the "defensive" nature of healthcare. Revise the plan's text rather than copying it; keep this to 2–3 short paragraphs.*
+Suppose the stock market rises by 5% in a given month and the healthcare industry rises by 3%. Would we expect healthcare stocks to fall by 3% if the market instead declined by 5%? A standard linear model of market sensitivity assumes that an industry's response is symmetric, meaning its sensitivity to market movements remains constant regardless of whether the market rises or falls. However, there are reasons to question whether this assumption holds in practice.
 
-*TODO: Define excess return and beta in one or two sentences.*
+Behavioral economics provides one possible explanation for asymmetric responses. Under the principle of loss aversion, investors may react more strongly to losses than to equivalent gains, potentially influencing how stock prices respond to negative market conditions. Industry characteristics may also play a role. Healthcare, for example, is often considered a defensive industry because demand for medical services and pharmaceuticals tends to persist during economic downturns. As a result, healthcare stocks may respond less strongly to market declines than to comparable market gains. Conversely, industries more dependent on discretionary spending may be particularly sensitive to negative market conditions.
 
-*TODO: State the primary research question in bold, as in the plan, and the goal (hypothesis testing and estimation). Note: the plan says "rather than prediction or inference", but hypothesis testing **is** inference. Reword to something like "rather than prediction".*
+In financial economics, an industry's market sensitivity is commonly measured using its *beta*, the slope coefficient from a regression of industry excess returns on market excess returns. Excess return refers to an asset's return above the risk-free rate. The standard model assumes a single beta across all market conditions, whereas allowing different slopes for positive and negative market excess returns provides a way to investigate potential asymmetry.
+
+**Our primary research question is whether an industry's sensitivity to market movements differs between periods of positive and negative market excess returns.** We focus initially on healthcare, with comparisons across other industries as an extension. Our objective is to estimate these differences and test whether they are statistically significant, rather than to predict future returns.
 
 ### Data
 
@@ -311,15 +313,13 @@ Target length: about 1–1.5 pages.
 
 ### Models
 
-Let $Y_t$\$Y_t\$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
+Let $Y_t$\$Y_t\$\$Y_t\$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
 
-$$Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,$$
- {#eq-simple}
+$$Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,$$ {#eq-simple}
 
 and the asymmetric model adds an interaction with the negative-market indicator:
 
-$$Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.$$
- {#eq-asymmetric}
+$$Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.$$ {#eq-asymmetric}
 
 *TODO: Interpret the coefficients: the slope is* $\beta_1$ when $X_t \ge 0$ and $\beta_1 + \beta_2$ when $X_t < 0$. Note that the fitted line is continuous at zero (one shared intercept, no separate intercept shift).
 
