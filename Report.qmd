@@ -349,19 +349,12 @@ For our primary hypothesis test, we use Newey-West heteroskedasticity-and-autoco
 
 ### Sensitivity Analyses
 
-To assess influence, we rank months by the absolute DFBETAS for $\beta_2$, which measures the standardized change in the estimated slope difference when a month is omitted. We refit the same model after omitting each of the three highest-ranked months individually and then all three together, using the same HAC standard errors as the primary analysis. High influence alone does not indicate a data error: these months are real market events, so the full sample remains the basis for the primary result, and the refits show only how much our conclusion depends on them.
+Finally, we assess whether our results depend heavily on a small number of influential months. We rank observations by the absolute value of their DFBETAS for $\beta_2$, which measures how much the estimated slope difference changes, in standardized units, when an observation is omitted. 
 
-```{=html}
-<!--
-=============================================================================
-3. RESULTS
-Rubric: "Explain the main findings in context, with useful figures or tables.
-Include at least one relevant model check or sensitivity analysis and explain
-what it revealed."
-Target length: about 1.5–2 pages including figures/tables.
-=============================================================================
--->
-```
+We then refit the piecewise model after removing each of the three most influential months individually and all three together, using the same HAC approach as in our primary analysis. These comparisons are intended to assess the stability of our estimate rather than serve as additional hypothesis tests. 
+
+Importantly, an influential observation is not necessarily an error. Unusual months, including those associated with major financial events, are part of the market conditions we want to study. We therefore retain all observations in our primary analysis and use the refits only to understand how much our results depend on particular months. 
+
 
 ## 3. Results
 
