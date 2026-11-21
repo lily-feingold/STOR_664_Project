@@ -14,3 +14,5 @@
 # macOS
 .DS_Store
 .Rproj.user
+
+# Command for quarto render: quarto render STOR_664_Writeup.qmd --to pdf
