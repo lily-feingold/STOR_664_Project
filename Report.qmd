@@ -463,7 +463,7 @@ The supplemental tests provide additonal evidence. The studentized Breusch–Pag
 
 ### Robust Inference for the Slope Difference
 
-We therefore base inference on Newey–West HAC standard errors. @tbl-models reports the estimated slopes with HAC standard errors and confidence intervals.
+Given the concerns raised by our residual diagnostics, we use Newey–West HAC standard errors for our primary inference. @tbl-models reports the estimated slopes and their corresponding 95% confidence intervals.
 
 ```{r}
 #| label: tbl-models
@@ -500,7 +500,7 @@ model_table <- data.frame(
 knitr::kable(model_table, digits = 3, row.names = FALSE, escape = FALSE)
 ```
 
-The estimated difference in slopes is $\hat\beta_2 =$ `r sprintf("%.3f", beta2_hat)` (95% HAC CI `r sprintf("%.3f", beta2_hac_ci[1])` to `r sprintf("%.3f", beta2_hac_ci[2])`; $z =$ `r sprintf("%.2f", beta2_hac_test["z value"])`, $p =$ `r format.pval(beta2_hac_test["Pr(>|z|)"], digits = 2)`). The interval contains zero, so we do not reject $H_0: \beta_2 = 0$. This does not show that the two sensitivities are equal: the data are consistent with a negative-market slope anywhere from about `r sprintf("%.2f", abs(beta2_hac_ci[1]))` lower to `r sprintf("%.2f", beta2_hac_ci[2])` higher than the nonnegative-market slope.
+The estimated slope is 0.588 for nonnegative market months and 0.652 for negative market months, giving a difference of `r sprintf("%.3f", beta2_hat)`. However, this difference is small relative to its uncertainty. The 95% HAC confidence interval ranges from `r sprintf("%.3f", beta2_hac_ci[1])` to `r sprintf("%.3f", beta2_hac_ci[2])`($z =$ `r sprintf("%.2f", beta2_hac_test["z value"])`, $p =$ `r format.pval(beta2_hac_test["Pr(>|z|)"], digits = 2)`), so we fail to reject the null hypothesis of equal slopes. This does not mean that the two sensitivities are necessarily equal. The interval includes differences in either direction that could be economically meaningful.
 
 ```{r}
 #| label: tbl-lag-comparison
@@ -547,9 +547,11 @@ lag_table$`p-value` <- format.pval(lag_table$`p-value`, digits = 2, eps = 0.001)
 knitr::kable(lag_table, digits = 3, row.names = FALSE)
 ```
 
-@tbl-lag-comparison shows how much the choice of standard error matters. The primary HAC standard error is `r sprintf("%.2f", se_ratio["6"])` times the conventional OLS standard error, and the ratio grows from `r sprintf("%.2f", se_ratio["0"])` with no lags to `r sprintf("%.2f", se_ratio["12"])` with twelve. Conventional OLS therefore overstates the precision of $\hat\beta_2$, but every interval contains zero, so the conclusion does not depend on the lag choice.
+@tbl-lag-comparison compares conventional OLS inference with HAC interference under several lag choices. The primary HAC standard error is approximately 25% larger than the conventional OLS standard error, suggesting that conventional OLS inference may overstate the precision of our estimate. The HAC standard error also increases as we include more lags, but every confidence interval contains zero. Thus, our conclusion remains unchanged across the lag choices considered.
 
 ### Sensitivity to Influential Months
+
+Finally, we examine whether our results are driven by a small number of influential observations. The three months with the largest absolute DFBETAS for the slope difference are April 2026, April 2020, and April 2009, all of which had unusually large positive market excess returns. Although our parameter of interest compares positive- and negative-market slopes, influential observations on either side of zero can affect the estimated difference. 
 
 ```{r}
 #| label: influence
@@ -600,7 +602,7 @@ refit_estimates <- influence_table$Estimate[-1]
 knitr::kable(influence_table, digits = 3, row.names = FALSE)
 ```
 
-The three most influential months for $\hat\beta_2$ are `r paste(influential_months$Month, collapse = ", ")`, with DFBETAS of `r paste(sprintf("%.2f", influential_months$dfbetas), collapse = ", ")`. All three had large positive market excess returns (`r paste(sprintf("%.1f", influential_months$market), collapse = ", ")` percent). Because $\beta_2$ is the difference between the two slopes, months on the nonnegative side influence it through $\hat\beta_1$. Omitting these months moves $\hat\beta_2$ to between `r sprintf("%.3f", min(refit_estimates))` and `r sprintf("%.3f", max(refit_estimates))` (@tbl-influence), and every interval still contains zero.
+Removing these months individually changes the estimated slope difference from 0.064 to values between 0.018 and 0.108. Removes all three gives an estimate of 0.014, with a 95% HAC confidence interval of -0.213 to 0.241. None of these sensitivity analyses provides strong evidence of different slopes. However, these months represent genuine market conditions, not identified data errors, so we retain them in our primary analysis. 
 
 ```{=html}
 <!--
