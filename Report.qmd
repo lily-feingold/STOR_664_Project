@@ -407,7 +407,7 @@ ggplot(data, aes(x = market, y = health)) +
 
 The single-slope model gives an estimated beta of $\hat\alpha_1 =$ `r sprintf("%.2f", coef(model_simple)["market"])`. Allowing the slope to differ between positive and negative market months produces estimates of `r sprintf("%.2f", beta_positive)` and `r sprintf("%.2f", beta_negative)` respectively. Both estimates are below one, consistent with healthcare being less sensitive to market movements than the broader market. However, the two slopes are fairly similar, with an estimated difference of just $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)`. Allowing separate slopes also does little to improve the model's fit, with $R^2 =$ `r sprintf("%.3f", summary(model_simple)$r.squared)` for both models when rounded to three decimal places. 
 
-Under conventional OLS inference, the 95% confidence interval for the slope difference is `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])` ($t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`. However, these results assume constant error variance and uncorrelated errors, assumptions we examine next. 
+Under conventional OLS inference, the 95% confidence interval for the slope difference is `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])` ($t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`). However, these results assume constant error variance and uncorrelated errors, assumptions we examine next. 
 
 ### Checking the OLS Assumptions
 
