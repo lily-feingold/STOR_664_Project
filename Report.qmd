@@ -1,11 +1,16 @@
 ---
 format:
   pdf:
-    geometry: margin=0.8in
+    geometry: margin=0.7in
     fontsize: 10pt
     fig-pos: htbp
     linestretch: 1.05
     colorlinks: true
+    include-in-header:
+      text: |
+        \setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+        \setlength{\floatsep}{8pt plus 2pt minus 2pt}
+        \setlength{\intextsep}{8pt plus 2pt minus 2pt}
 ---
 
 \begin{center}
@@ -244,7 +249,7 @@ beta2_hac_ci <- coefci(
 
 Suppose the stock market rises by 5% in a given month and the healthcare industry rises by 3%. Would we expect healthcare stocks to respond with the same sensitivity if the market instead declined by 5%? A standard linear model of market sensitivity assumes that an industry's response remains constant regardless of whether the market rises or falls. However, there are reasons to question whether this assumption holds in practice. 
 
-Behavioral economics provides one possible explanation for asymmetric responses. Under the principle of loss aversion, investors may react more strongly to losses than to equivalent gains, potentially influencing how stock prices respond to negative market conditions. Industry characteristics may also play a role. Healthcare, for example, is often considered a defensive industry because demand for medications, medical procedures, and other healthcare services tends to persist during economic downturns. As a result, healthcare stocks may be somewhat insulated from broader market declines. However, this does not necessarily mean that healthcare's sensitivity to market movements differs between gains and losses.
+Behavioral economics provides one possible explanation for asymmetric responses. Under the principle of loss aversion, investors may react more strongly to losses than to equivalent gains, potentially influencing how stock prices respond to negative market conditions. Industry characteristics may also play a role. Healthcare, for example, is often considered a defensive industry because demand for medications, medical procedures, and other healthcare services tends to persist during economic downturns. As a result, healthcare stocks may be somewhat insulated from broader market declines. However, being less sensitive to market movements overall does not necessarily mean that healthcare responds differently to market gains and losses. 
 
 In financial economics, an industry's market sensitivity is commonly measured using its *beta*, the slope from a regression of industry excess returns on market excess returns. Excess return refers to an asset's return above the risk-free rate. The standard model assumes a single beta, regardless of market direction. Allowing different slopes for positive and negative market excess returns gives us a way to investigate potential asymmetry.
 
@@ -332,7 +337,7 @@ We test
 $$
 H_0: \beta_2 = 0 \qquad \text{against} \qquad H_A: \beta_2 \neq 0.
 $$
-Under the null hypothesis, a single slope adequately describes the relationship, and (@eq-asymmetric) reduces to (@eq-simple). Under conventional OLS assumptions, the two-sided $t$-test for $\beta_2$ is equivalent to the partial $F$-test comparing these nested models, with $F = t^2$. Because those assumptions may not hold for financial returns, we use robust inference for our primary hypothesis test.
+Under the null hypothesis, a single slope adequately describes the relationship, and @eq-asymmetric reduces to @eq-simple. Under conventional OLS assumptions, the two-sided $t$-test for $\beta_2$ is equivalent to the partial $F$-test comparing these nested models, with $F = t^2$. Because those assumptions may not hold for financial returns, we use robust inference for our primary hypothesis test.
 
 We report point estimates and 95% confidence intervals for the single-market slope, the slopes in positive and negative market months, and their difference. 
 
@@ -396,7 +401,7 @@ ggplot(data, aes(x = market, y = health)) +
   theme(
     legend.position = "bottom",
     legend.text = element_text(size = 8),
-    plot.margin = margin(2, 2, 2, 2)
+    plot.margin = margin(4, 4, 4, 12)
   )
 ```
 
@@ -410,8 +415,9 @@ Under conventional OLS inference, the 95% confidence interval for the slope diff
 #| label: fig-diagnostics
 #| echo: false
 #| fig-cap: "Residual diagnostics for the piecewise model. (a) Residuals versus fitted values. (b) residuals over time. (c) ACF of residuals. (d) ACF of squared residuals. Dashed blue lines indicate approximate 95% bounds under no autocorrelation."
-#| fig-width: 6.0
-#| fig-height: 3.4
+#| fig-pos: H 
+#| fig-width: 5.8
+#| fig-height: 3.1
 #| fig-align: center
 #| out-width: 95%
 
@@ -472,6 +478,7 @@ Given the concerns raised by our residual diagnostics, we use Newey–West HAC s
 #| label: tbl-models
 #| echo: false
 #| tbl-cap: "Estimated slopes with Newey-West HAC standard errors (Bartlett weights, maximum lag 6) and 95% confidence intervals."
+#| tbl-pos: H
 
 c_neg <- c(0, 1, 1)  # picks out beta_1 + beta_2
 se_hac <- sqrt(diag(vcov_hac))
@@ -662,5 +669,3 @@ Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis*. Springer. htt
 
 **Use of AI:** We used ChatGPT to help improve the grammar and clarity of our writing and identify places where we could shorten the report and proposal, which were initially much longer than intended. We reviewed these suggestions individually, accepting some and rejecting others. We also used Claude to suggest R code for our analyses and help explain some of the statistical tests we used. All group members reviewed the code and discussed the methods and results to ensure we understood the analyses and could explain our findings independently.
 
-
-## Appendix 
