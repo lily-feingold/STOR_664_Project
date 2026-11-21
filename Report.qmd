@@ -360,7 +360,7 @@ Importantly, an influential observation is not necessarily an error. Unusual mon
 
 ### Fitted OLS Models
 
-@fig-healthcare plots monthly healthcare excess returns against market excess returns, together with the fitted piecewise model (@eq-asymmetric).
+@fig-healthcare shows monthly healthcare excess returns against market excess returns, along with the fitted piecewise model (@eq-asymmetric).
 
 ```{r}
 #| label: fig-healthcare
@@ -402,9 +402,9 @@ ggplot(data, aes(x = market, y = health)) +
   )
 ```
 
-The single-slope benchmark gives $\hat\alpha_1 =$ `r sprintf("%.2f", coef(model_simple)["market"])`. In the piecewise model, the estimated slopes are `r sprintf("%.2f", beta_positive)` for nonnegative market excess returns and `r sprintf("%.2f", beta_negative)` for negative market excess returns. Both are below one, suggesting that healthcare returns are generally less sensitive to market movements than a portfolio with a beta of one. The two slopes are also similar: the estimated difference is $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)`, and allowing separate slopes barely changes the fit ($R^2 =$ `r sprintf("%.3f", summary(model_simple)$r.squared)` for @eq-simple and `r sprintf("%.3f", summary(model_asymmetric)$r.squared)` for @eq-asymmetric).
+The single-slope model gives an estimated beta of $\hat\alpha_1 =$ `r sprintf("%.2f", coef(model_simple)["market"])`. Allowing the slope to differ between positive and negative market months produces estimates of `r sprintf("%.2f", beta_positive)` and `r sprintf("%.2f", beta_negative)` respectively. Both estimates are below one, consistent with healthcare being less sensitive to market movements than the broader market. However, the two slopes are fairly similar, with an estimated difference of just $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)`. Allowing separate slopes also does little to improve the model's fit, with ($R^2 =$ `r sprintf("%.3f", summary(model_simple)$r.squared)` for both models when rounded to three decimal places. 
 
-Under conventional OLS inference, the 95% confidence interval for $\beta_2$ is `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])` ($t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`; equivalently, the partial $F$-test gives $F =$ `r sprintf("%.2f", nested_test$F[2])`). These standard errors assume constant error variance and uncorrelated errors, which we check next.
+Under conventional OLS inference, the 95% confidence interval for the slope difference is `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])` ($t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`. However, these results assume constant error variance and uncorrelated errors, assumptions we examine next. 
 
 ### Checking the OLS Assumptions
 
@@ -457,9 +457,9 @@ resid_sd_by_year <- tapply(
 )
 ```
 
-@fig-diagnostics shows the residual checks. Panel (a) shows no strong funnel shape against the fitted values, but panel (b) shows that the size of the deviations changes over time: the residual standard deviation is about `r sprintf("%.1f", resid_sd_by_year["2000"])` percentage points in 2000 and `r sprintf("%.1f", resid_sd_by_year["2025"])` in 2025, compared with roughly 2 to 3 in most other years. Panel (c) shows little autocorrelation in the raw residuals, so the direction of a deviation does not persist from month to month. Panel (d), however, shows positive autocorrelation in the squared residuals at several lags up to about one year, so large deviations tend to occur near one another in time.
+@fig-diagnostics shows the residual diagnostics for the piecewise model. Panel (a) does not reveal a clear funnel shape, but panel (b) suggests that residual variability changes over time, with several periods of unusually large deviations. The autocorrelation plots provide further insight: while the residuals themselves show relatively little autocorrelation, their squared values exhibit positive autocorrelation at several lags. This pattern is consistent with volatility clustering, where unusually large deviations tend to occur close together in time. 
 
-The supplemental tests point the same way. The studentized Breusch–Pagan test gives $BP =$ `r sprintf("%.2f", bp_test$statistic)` on `r bp_test$parameter` degrees of freedom ($p =$ `r format.pval(bp_test$p.value, digits = 2)`), modest evidence that the residual variance is related to the regressors. The Breusch–Godfrey test through six lags gives $LM =$ `r sprintf("%.2f", bg_test$statistic)` ($p =$ `r format.pval(bg_test$p.value, digits = 2)`), so it does not detect correlation in the residuals themselves. Together, the checks suggest that the errors do not have constant variance and that their magnitudes are dependent over time. Conventional OLS standard errors ignore both features and may understate the uncertainty in $\hat\beta_2$.
+The supplemental tests provide additonal evidence. The studentized Breusch–Pagan test gives $BP =$ `r sprintf("%.2f", bp_test$statistic)` on `r bp_test$parameter` degrees of freedom ($p =$ `r format.pval(bp_test$p.value, digits = 2)`), suggesting that error variance may depend on the regressors. The Breusch–Godfrey test through six lags gives $LM =$ `r sprintf("%.2f", bg_test$statistic)` ($p =$ `r format.pval(bg_test$p.value, digits = 2)`), providing insufficient evidence to reject the null of no serial correlation through six lags. Taken together, these diagnostics raise concerns about the assumptions underlying conventional OLS standard errors and motivate our use of HAC interference. 
 
 ### Robust Inference for the Slope Difference
 
