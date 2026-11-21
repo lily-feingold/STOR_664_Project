@@ -604,77 +604,52 @@ knitr::kable(influence_table, digits = 3, row.names = FALSE)
 
 Removing these months individually changes the estimated slope difference from 0.064 to values between 0.018 and 0.108. Removes all three gives an estimate of 0.014, with a 95% HAC confidence interval of -0.213 to 0.241. None of these sensitivity analyses provides strong evidence of different slopes. However, these months represent genuine market conditions, not identified data errors, so we retain them in our primary analysis. 
 
-```{=html}
-<!--
-=============================================================================
-4. DISCUSSION
-Rubric: "What did you learn? What remains uncertain? Discuss limitations,
-distinguish association from causation where relevant, and explain
-substantial changes from your plan. Address exploration, model selection,
-and multiple comparisons when they affect your claims. An inconclusive
-answer is acceptable. Explain what the evidence supports."
-Target length: about 0.75–1 page.
-=============================================================================
--->
-```
-
 ## 4. Discussion
 
 ### What We Learned
 
-*TODO: Answer the research question directly, in one or two sentences, and say how strong the evidence is.*
+Our results provide little evidence that the healthcare industry's sensitivity to market movements differs between months with positive and negative market excess returns. Although the estimated slope is slightly larger during negative market months (0.652 versus 0.588), the difference is small relative to its uncertainty (95% HAC CI: -0.229 to 0.357; $p = 0.67$). We therefore fail to reject the hypothesis of equal slopes. Importantly, this does not establish that healthcare responds equally to market gains and losses. Our confidence interval includes differences in either direction that could still be economically meaningful. 
 
 ### What Remains Uncertain
 
-*TODO: What the confidence interval for* $\beta_2$ *can and cannot rule out, and how much the result depends on a few extreme months.*
+Our diagnostics suggest that the variability of healthcare returns around the fitted relationship changes over time, with some evidence of volatility clustering. Accounting for heteroskedasticity and serial dependence using Newey-West standard errors increases the estimated uncertainty in the slope difference, although our conclusion remains unchanged across the lag choices considered. Our results also depend somewhat on a few influential months, but removing those observations does not change our overall conclusion. Because these months represent genuine market conditions rather than identified errors, we retain them in our primary analysis. 
 
 ### Limitations
 
-*TODO: Assumption violations found in Section 3 and how much they matter. The choice of break point at zero. A single broad healthcare portfolio. Value-weighted portfolios are dominated by large firms.*
+One important limitation is our assumption that the relationship between healthcare and market excess returns is linear on either side of zero. Although this gives us a straightforward way to compare market sensitivities, the true relationship may be more complicated. For example, sensitivity could change gradually as market returns become more extreme rather than shifting specifically at zero. We also impose a common intercept, meaning our model does not allow an abrupt jump in fitted healthcare returns as market excess returns cross zero. 
 
-Our analysis concerns contemporaneous market and industry returns. The association we estimate should not be interpreted as causal or as evidence of our ability to predict future returns.
+Our analysis focuses on a single value-weighted healthcare portfolio, meaning larger firms have greater influence on our results. Moreover, the relationship we estimate may not generalize to other industries or periods. Finally, our analysis examines how healthcare and market returns move together during the same month; it does not establish that market movements cause changes in healthcare or provide evidence that we can predict future returns. 
 
 ### Changes from the Plan
 
-*TODO: List any substantial changes from the November 5 plan and why we made them: HAC standard errors as the primary inference (in response to proposal feedback), the DFBETAS-based influence analysis, and dropping the subperiod comparison and other-industry extension to keep healthcare as the single prespecified analysis.*
+In response to the feedback on our proposal, we made Newey-West HAC standard errors our primary method for assessing uncertainty and added an analysis of influential months. We also chose not to pursue our proposed comparison across industries or subperiods, allowing us to focus on the healthcare industry and our original research question. 
 
-### Exploration, Model Selection, and Multiple Comparisons
-
-*TODO: Be honest about what was exploratory. The plan's figure already showed the slopes; did that affect our choices? Note that we ran one prespecified test, so no multiple-comparison adjustment is needed; the lag comparison and influence refits are sensitivity checks, not additional tests of new hypotheses.*
 
 ## References
 
-French, Kenneth R. *Kenneth R. French Data Library.* <https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html>. Accessed *TODO: date*.
+French, K. R. (2026). *Kenneth R. French Data Library*. Dartmouth College, Tuck School of Business. https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html. Accessed November 2026.
 
-*TODO: Add any other sources (e.g., for loss aversion, Newey–West standard errors, the R packages used), in one consistent format.*
+Newey, W. K., & West, K. D. (1987). A simple, positive semi-definite, heteroskedasticity and autocorrelation consistent covariance matrix. *Econometrica, 55*(3), 703–708. https://doi.org/10.2307/1913610
+
+Zeileis, A., Köll, S., & Graham, N. (2020). Various versatile variances: An object-oriented implementation of clustered covariances in R. *Journal of Statistical Software, 95*(1), 1–36. https://doi.org/10.18637/jss.v095.i01
+
+Zeileis, A., & Hothorn, T. (2002). Diagnostic checking in regression relationships. *R News, 2*(3), 7–10. https://journal.r-project.org/articles/RN-2002-018/
+
+Wickham, H. (2016). *ggplot2: Elegant Graphics for Data Analysis*. Springer. https://doi.org/10.1007/978-3-319-24277-4
 
 ## Contributions and Acknowledgments
 
-```{=html}
-<!--
-Rubric: "acknowledge each member's contributions and outside help, including
-how you used AI and checked its work. State if you used no outside help."
--->
-```
+**Manas Dhawan:** As our resident econometrician, Manas helped the group understand how HAC standard errors work and why the Breusch–Pagan and Breusch–Godfrey tests would be useful for checking our regression assumptions. He also helped interpret the results of these tests and their implications for our analysis.
 
-*TODO: Each member's contributions to the report and the code, by name:*
+**Lily Feingold:** Lily helped develop our plan for addressing the feedback on our proposal and researched the statistical methods we could use to strengthen our analysis. She wrote much of the Methods section and created an initial draft of the presentation slides.
 
-- *Manas Dhawan: TODO*
-- *Lily Feingold: TODO*
-- *Sebastian Sec: TODO*
-- *Tommy Smith: TODO*
+**Sebastian Sec:** Sebastian handled much of the data preparation, including cleaning and merging the two datasets. He also wrote much of the Data section of the report.
 
-We used ChatGPT to assist with writing and organizing R code for downloading, combining, and preparing the two publicly available datasets. To check the data preparation, we implemented automated validation tests using `stopifnot()` in R. These tests check for duplicate monthly observations, missing or nonfinite values in key variables, chronological consistency, and correct construction of excess returns and the interaction term. The tests are executed when the document renders and halt execution if an assertion fails. We also used ChatGPT to help improve the conciseness of the proposal. Specifically, we asked it to suggest passages that could be shortened or removed, then independently evaluated these recommendations and decided which changes to incorporate.
+**Tommy Smith:** As our resident Git expert, Tommy helped ensure that everyone's work stayed synchronized (no easy task!). With assistance from Claude, he also wrote much of the R code used to implement our analyses.
 
-*TODO: Add new AI uses and how we checked them, including Claude (report skeleton, HAC and influence-analysis code, and the merge and reorganization of the Methods and Results sections).*
+**Collaborative Contributions:** Although individual members took the lead on different parts of the project, much of the work was collaborative. We spent several hours working together to discuss methodological choices, interpret results, and decide how best to present our findings. All four members reviewed the code to understand how the analyses were implemented, read and edited the report, and contributed to refining the final presentation.
 
-```{=html}
-<!--
-Optional appendix: does not count toward the 4–6 page limit. Good place for
-extra diagnostics or the full regression output.
--->
-```
+**Use of AI:** We used ChatGPT to help improve the grammar and clarity of our writing and identify places where we could shorten the report and proposal, which were initially much longer than intended. We reviewed these suggestions individually, accepting some and rejecting others. We also used Claude to suggest R code for our analyses and help explain some of the statistical tests we used. All group members reviewed the code and discussed the methods and results to ensure we understood the analyses and could explain our findings independently.
 
-## Appendix (optional)
 
-*TODO: Supplementary figures and tables, or delete this section.*
+## Appendix 
