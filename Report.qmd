@@ -327,11 +327,17 @@ When $X_t \geq 0$, the interaction is zero, so the slope is $\beta_1$. When $X_t
 
 ### Hypothesis Test and Estimation
 
-Our parameter of interest is the negative-market slope minus the nonnegative-market slope,
+Our parameter of interest is the difference between the negative-market and nonnegative-market slopes: 
 $$
 (\beta_1 + \beta_2) - \beta_1 = \beta_2.
 $$
-We test $H_0: \beta_2 = 0$ against $H_A: \beta_2 \neq 0$. Under the null, the piecewise model (@eq-asymmetric) reduces to the single-slope model (@eq-simple). Under the conventional OLS assumptions, the two-sided $t$-test for $\beta_2$ is equivalent to the partial $F$-test comparing the two models ($F = t^2$). We report point estimates and 95% confidence intervals for $\alpha_1$, $\beta_1$, $\beta_1 + \beta_2$, and $\beta_2$.
+We test 
+$$
+H_0: \beta_2 = 0 \qquad \text{against} \qquad H_A: \beta_2 \neq 0.
+$$
+Under the null hypothesis, a single slope adequately describes the relationship, and Equation (@eq-asymmetric) reduces to Equation (@eq-simple). Under conventional OLS assumptions, the two-sided $t$-test for $\beta_2$ is equivalent to the partial $F$-test comparing these nested models, with $F = t^2$. Because those assumptions may not hold for financial returns, we use robust inference for our primary hypothesis test.
+
+We report point estimates and 95% confidence intervals for the single-market slope, the slopes in positive and negative market months, and their difference. 
 
 ### Assumptions and Assessing Uncertainty
 
