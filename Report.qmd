@@ -480,6 +480,7 @@ title("(d) ACF of squared residuals", line = 0.8)
 
 ```{r}
 #| label: residual-tests
+#| include: false
 
 bp_test <- bptest(model_asymmetric)             # studentized Breusch-Pagan
 bg_test <- bgtest(model_asymmetric, order = 6)  # Breusch-Godfrey, 6 lags
