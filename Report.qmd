@@ -11,22 +11,6 @@ execute:
   message: false
 ---
 
-```{=html}
-<!--
-REPORT SKELETON
-Rubric: 4–6 pages including figures and tables, excluding references and the
-optional appendix. Four required sections: Introduction, Methods, Results,
-Discussion. Due Sunday, November 29, 11:59 p.m. Eastern (with the code ZIP).
-
-Conventions in this file:
-  - "TODO:" lines in italics are visible placeholders. Delete each one once
-    the text is written, so none reach the submitted PDF.
-  - Code chunks marked `eval: false` are starter code. Check it, then switch
-    to `eval: true` (or delete the line) when the section is ready.
-  - Rubric requirements are quoted in comments like this one.
--->
-```
-
 \begin{center}
 {\large\textbf{Do Industry Portfolios Respond Differently to Market Gains and Losses?}}\\[3pt]
 STOR 664 Final Report\\[3pt]
@@ -256,18 +240,6 @@ beta2_hac_ci <- coefci(
 )["interaction", ]
 ```
 
-```{=html}
-<!--
-=============================================================================
-1. INTRODUCTION
-Rubric: "Introduce the question, provide important background and context,
-describe the data and important cleaning decisions, and identify the
-population or setting your conclusions concern. You do not need a
-comprehensive literature review of the area."
-Target length: about 1 page.
-=============================================================================
--->
-``` 
 
 ## 1. Introduction
 
@@ -333,32 +305,25 @@ knitr::kable(
 
 Our conclusions concern the relationship between monthly healthcare and market excess returns for value-weighted U.S. stock portfolios from January 2000 through September 2026. Because these portfolios are weighted by market capitalization, our findings primarily reflect the behavior of larger publicly traded companies rather than individual stocks. We do not claim that these relationships necessarily extend to international markets, daily returns, or future periods. Our analysis examines how market and healthcare returns move together during the same month, rather than establishing causal relationships or predicting future events. 
 
-```{=html}
-<!--
-=============================================================================
-2. METHODS
-Rubric: "Explain your models, choices, and assumptions. Describe how you
-assessed uncertainty or predictive performance."
-Target length: about 1–1.5 pages.
-=============================================================================
--->
-```
-
 ## 2. Methods
 
 ### Models
 
-Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$, both measured in percent. We first fit a single-slope benchmark by ordinary least squares (OLS):
+Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$, both measured in percentage points. We begin with a standard single-slope linear regression model, estimated using ordinary least squares (OLS): 
+
 $$
 Y_t = \alpha_0 + \alpha_1 X_t + u_t.
 $$ {#eq-simple}
-In this model, a one-percentage-point increase in market excess return is associated with an $\alpha_1$-percentage-point change in fitted healthcare excess return. The model uses the same slope across the full range of market returns.
 
-To allow market sensitivity to differ between negative and nonnegative months, we define $D_t = \mathbf{1}(X_t < 0)$ and fit
+Here, $\alpha_1$ represents the expected change in healthcare excess return, in percentage points, associated with a one-percentage-point increase in market excess return. This model assumes the same market sensitivity regardless of whether market excess returns are positive or negative. 
+
+To investigate whether this assumption is reasonable, we introduce an interaction term. Let $D_t = \mathbf{1}(X_t < 0)$, an indicator equal to one when market excess return is negative and zero otherwise. We fit the piecewise linear model 
+
 $$
 Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t D_t + \varepsilon_t.
 $$ {#eq-asymmetric}
-When $X_t \geq 0$, the interaction is zero and the slope is $\beta_1$. When $X_t < 0$, the interaction equals $X_t$ and the slope is $\beta_1 + \beta_2$. Both segments have the fitted value $\beta_0$ at $X_t = 0$, so the regression is continuous at zero. We use a common intercept because we expect the fitted healthcare excess return to change continuously as market excess return crosses zero. Months just below and just above zero have nearly identical market excess returns, and we have no specific reason to expect an abrupt shift in fitted healthcare returns at that boundary.
+
+When $X_t \geq 0$, the interaction is zero, so the slope is $\beta_1$. When $X_t < 0$, the slope becomes $\beta_1 + \beta_2$. Importantly, both segments share the same intercept, $\beta_0$, so the fitted lines meet at zero. We impose this continuity because months with market excess returns just above and below zero are economically similar, and we have no particular reason to expect an abrupt change in fitted healthcare returns at that boundary. 
 
 ### Hypothesis Test and Estimation
 
