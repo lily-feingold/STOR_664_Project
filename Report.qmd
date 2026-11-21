@@ -256,13 +256,13 @@ We obtain monthly financial data from the [Kenneth R. French Data Library](https
 
 The *Five Industry Portfolios* dataset provides monthly value-weighted returns for five broad industry groups: consumer, manufacturing, technology, healthcare, and other. Stocks are assigned to these portfolios based on their four-digit Standard Industrial Classification (SIC) codes, using classifications from Compustat or CRSP. Portfolio assignments are updated annually in June, and returns are calculated for the following July through June. Within each portfolio, returns are weighted by market capitalization, meaning larger companies contribute more heavily to the portfolio's performance. Our primary focus is the healthcare portfolio, which includes companies involved in healthcare services, pharmaceuticals, and medical equipment.
 
-The *Fama–French Research Data Factors* dataset provides monthly market excess returns (`Mkt-RF`) and the risk-free rate (`RF`). The market return is calculated as the value-weighted return of eligible U.S. common stocks in the CRSP database, representing a broader equity market than the S&P 500 alone. Market excess return is obtained by subtracting the one-month U.S. Treasury bill return from this market portfolio return. The risk-free rate is based on data from Ibbotson Associates through May 2024 and the ICE BofA US 1-Month Treasury Bill Index beginning in June 2024.
+The *Fama–French Research Data Factors* dataset provides monthly market excess returns (market) and the risk-free rate (RF). The market return is calculated as the value-weighted return of eligible U.S. common stocks in the CRSP database, representing a broader equity market than the S&P 500 alone. Market excess return is obtained by subtracting the one-month U.S. Treasury bill return from this market portfolio return. The risk-free rate is based on data from Ibbotson Associates through May 2024 and the ICE BofA US 1-Month Treasury Bill Index beginning in June 2024.
 
-Our primary response variable is healthcare excess return, defined as the healthcare portfolio return (`Hlth`) minus the risk-free rate (`RF`). Our explanatory variable is market excess return (`Mkt-RF`). To examine whether healthcare responds differently to market gains and losses, we construct an indicator equal to one when market excess return is negative and zero otherwise, along with an interaction between the indicator and market excess return. All returns are measured in percentage points.
+Our primary response variable is healthcare excess return, defined as the healthcare portfolio return minus the risk-free rate (healthcare). Our explanatory variable is market excess return (market). To examine whether healthcare responds differently to market gains and losses, we construct an indicator equal to one when market excess return is negative and zero otherwise, along with an interaction between the indicator and market excess return. All returns are measured in percentage points.
 
 Our analysis sample contains `r nrow(data)` monthly observations from `r format(min(data$date), "%B %Y")` through `r format(max(data$date), "%B %Y")`, of which `r n_negative` months had negative market excess returns and `r n_nonnegative` had nonnegative ones. We restrict the sample to January 2000 onward to focus on relatively recent financial market conditions while retaining sufficient observations for estimation and hypothesis testing.
 
-To prepare the data, we extract monthly value-weighted industry returns and monthly market factors, excluding annual summaries. We treat missing-value codes in the original files as missing and exclude incomplete observations. The datasets are merged by their year-month identifiers using an inner join, ensuring that industry and market returns correspond to the same month. Automated validation checks confirm chronological consistency, the absence of duplicate or missing monthly observations, and the correct construction of our regression variables.
+To prepare the data, we extract monthly value-weighted industry returns and monthly market factors, excluding annual summaries. The datasets were then merged by their year-month identifiers. We then checked for missing values and verified that the sample contains consecutive monthly observations without gaps or duplicate dates. Automated validation checks also confirm chronological consistency and the correct construction of excess returns and interaction variables.
 
 ### Setting of Our Conclusions
 
@@ -286,6 +286,8 @@ summary_table <- data |>
     Months = n(),
     `Mean market` = mean(market),
     `SD market` = sd(market),
+    `Min market` = min(market),
+    `Max market` = max(market),
     `Mean healthcare` = mean(health),
     `SD healthcare` = sd(health),
     .groups = "drop"
@@ -294,7 +296,7 @@ summary_table <- data |>
 knitr::kable(
   summary_table,
   digits = 2,
-  align = "lccccc"
+  align = "lccccccc"
 )
 ```
 
