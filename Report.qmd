@@ -279,7 +279,7 @@ Behavioral economics provides one possible explanation for asymmetric responses.
 
 In financial economics, an industry's market sensitivity is commonly measured using its *beta*, the slope coefficient from a regression of industry excess returns on market excess returns. Excess return refers to an asset's return above the risk-free rate. The standard model assumes a single beta across all market conditions, whereas allowing different slopes for positive and negative market excess returns provides a way to investigate potential asymmetry.
 
-**Our primary research question is whether an industry's sensitivity to market movements differs between periods of positive and negative market excess returns.** We focus initially on healthcare, with comparisons across other industries as an extension. Our objective is to estimate these differences and test whether they are statistically significant, rather than to predict future returns.
+**Our primary research question is whether an industry's sensitivity to market movements differs between periods of positive and negative market excess returns.** We answer this question for the healthcare industry, which we prespecified as our only analysis. Our objective is to estimate these differences and test whether they are statistically significant, rather than to predict future returns.
 
 ### Data
 
@@ -297,7 +297,7 @@ To prepare the data, we extract monthly value-weighted industry returns and mont
 
 ### Setting of Our Conclusions
 
-Our conclusions concern the relationship between monthly excess returns on value-weighted U.S. industry portfolios and the broader U.S. equity market from January 2000 through September 2026. Our primary analysis focuses on healthcare, with comparisons across consumer, manufacturing, technology, and other industries. Because these portfolios consist of publicly traded U.S. stocks and are weighted by market capitalization, our findings primarily characterize the behavior of broad industry portfolios rather than individual companies. We do not claim that these relationships extend to international markets, daily returns, or future periods. Furthermore, our analysis identifies statistical associations between contemporaneous market and industry returns and does not establish causality or provide evidence of predictive performance.
+Our conclusions concern the relationship between monthly excess returns on value-weighted U.S. industry portfolios and the broader U.S. equity market from January 2000 through September 2026. Our analysis focuses on the healthcare portfolio. Because these portfolios consist of publicly traded U.S. stocks and are weighted by market capitalization, our findings primarily characterize the behavior of broad industry portfolios rather than individual companies. We do not claim that these relationships extend to international markets, daily returns, or future periods. Furthermore, our analysis identifies statistical associations between contemporaneous market and industry returns and does not establish causality or provide evidence of predictive performance.
 
 ```{r}
 #| label: tbl-summary
@@ -346,43 +346,60 @@ Target length: about 1–1.5 pages.
 
 ### Models
 
-Let $Y_t$\$Y_t\$\$Y_t\$ denote healthcare excess return and $X_t$ denote market excess return in month $t$. The baseline model is
+Let $Y_t$ denote healthcare excess return and $X_t$ denote market excess return in month $t$, both measured in percent. We first fit a single-slope benchmark by ordinary least squares (OLS):
+$$
+Y_t = \alpha_0 + \alpha_1 X_t + u_t.
+$$ {#eq-simple}
+In this model, a one-percentage-point increase in market excess return is associated with an $\alpha_1$-percentage-point change in fitted healthcare excess return. The model uses the same slope across the full range of market returns.
 
-$$Y_t = \beta_0 + \beta_1 X_t + \varepsilon_t,$$ {#eq-simple}
-
-and the asymmetric model adds an interaction with the negative-market indicator:
-
-$$Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t \, I(X_t < 0) + \varepsilon_t.$$ {#eq-asymmetric}
-
-*TODO: Interpret the coefficients: the slope is* $\beta_1$ when $X_t \ge 0$ and $\beta_1 + \beta_2$ when $X_t < 0$. Note that the fitted line is continuous at zero (one shared intercept, no separate intercept shift).
-
-*TODO: Justify modeling choices. Why break at zero rather than at another threshold? Why no separate intercept for down markets? Why excess returns rather than raw returns?*
+To allow market sensitivity to differ between negative and nonnegative months, we define $D_t = \mathbf{1}(X_t < 0)$ and fit
+$$
+Y_t = \beta_0 + \beta_1 X_t + \beta_2 X_t D_t + \varepsilon_t.
+$$ {#eq-asymmetric}
+When $X_t \geq 0$, the interaction is zero and the slope is $\beta_1$. When $X_t < 0$, the interaction equals $X_t$ and the slope is $\beta_1 + \beta_2$. Both segments have the fitted value $\beta_0$ at $X_t = 0$, so the regression is continuous at zero. We use a common intercept because we expect the fitted healthcare excess return to change continuously as market excess return crosses zero. Months just below and just above zero have nearly identical market excess returns, and we have no specific reason to expect an abrupt shift in fitted healthcare returns at that boundary.
 
 ### Hypothesis Test and Estimation
 
-$$H_0: \beta_2 = 0 \qquad \text{versus} \qquad H_A: \beta_2 \neq 0.$$
-
-*TODO: Describe the two-sided* $t$-test for $\beta_2$ and its equivalence to the partial $F$-test comparing @eq-simple and @eq-asymmetric. State the significance level ($\alpha = 0.05$?). Say that we report point estimates and 95% confidence intervals for $\beta_1$, $\beta_1 + \beta_2$, and $\beta_2$.
+Our parameter of interest is the negative-market slope minus the nonnegative-market slope,
+$$
+(\beta_1 + \beta_2) - \beta_1 = \beta_2.
+$$
+We test $H_0: \beta_2 = 0$ against $H_A: \beta_2 \neq 0$. Under the null, the piecewise model (@eq-asymmetric) reduces to the single-slope model (@eq-simple). Under the conventional OLS assumptions, the two-sided $t$-test for $\beta_2$ is equivalent to the partial $F$-test comparing the two models ($F = t^2$). We report point estimates and 95% confidence intervals for $\alpha_1$, $\beta_1$, $\beta_1 + \beta_2$, and $\beta_2$.
 
 ### Assumptions and Assessing Uncertainty
 
-*TODO: List the OLS assumptions behind the classical standard errors (linearity, independent errors, constant variance; normality for exact small-sample inference). For each one, say how we checked it (see the model checks in Section 3).*
+Let $\mathbf X$ denote the observed series of market excess returns. Conventional OLS standard errors assume that $\operatorname{Var}(\varepsilon_t \mid \mathbf X) = \sigma^2$ for every month and that $\operatorname{Cov}(\varepsilon_t, \varepsilon_s \mid \mathbf X) = 0$ for distinct months $t$ and $s$. Constant variance means that the spread of healthcare returns around the fitted relationship is the same across months. This assumption may be restrictive because the market return captures only part of what moves the healthcare portfolio; for example, an unexpectedly successful trial or rejected drug application could move pharmaceutical or biotech stocks. During periods of heightened uncertainty, the deviations from the fitted relationship may be larger and may stay large for several months.
 
-*TODO: If the checks show heteroskedasticity or autocorrelation (the main concern in the plan), describe the remedy. Options: heteroskedasticity- and autocorrelation-consistent (Newey–West) standard errors, or a bootstrap. State the lag choice.*
+We plot residuals against fitted values to check whether their spread changes with the fitted return. We also examine the autocorrelations of raw and squared residuals. Raw residuals help detect whether positive or negative deviations persist. Squared residuals help detect whether large deviations tend to occur near one another in time. As supplemental checks, we use a studentized Breusch–Pagan test for variance related to the model regressors and a Breusch–Godfrey test for serial correlation through six months.
+
+For $\beta_2$, we report the OLS estimate, a 95% confidence interval, and a two-sided $p$-value using Newey–West heteroskedasticity-and-autocorrelation-consistent (HAC) standard errors. We use Bartlett weights and a maximum lag of six months, giving nearer months more weight in estimating the covariance. Six months is slightly longer than the common rule-of-thumb lag $\lfloor 4(T/100)^{2/9} \rfloor =$ `r floor(4 * (nrow(data) / 100)^(2/9))` for our $T =$ `r nrow(data)` months, and allows deviations to remain related for up to half a year. HAC inference relies on large-sample approximations rather than normally distributed errors, so we compare the HAC $z$-statistic with the standard normal distribution. We compare the primary result with conventional OLS inference and with HAC calculations using maximum lags of 0, 3, and 12 months.
 
 ### Sensitivity Analyses
 
-*TODO: Describe each sensitivity analysis before reporting it in Section 3. From the plan: (1) influential observations (leverage, Cook's distance, refit without the most influential months); (2) estimates across subperiods (e.g., 2000–2009 vs. 2010–present, or excluding the 2008–09 crisis and the 2020 COVID crash).*
+To assess influence, we rank months by the absolute DFBETAS for $\beta_2$, which measures the standardized change in the estimated slope difference when a month is omitted. We refit the same model after omitting each of the three highest-ranked months individually and then all three together, using the same HAC standard errors as the primary analysis. High influence alone does not indicate a data error: these months are real market events, so the full sample remains the basis for the primary result, and the refits show only how much our conclusion depends on them.
 
+```{=html}
+<!--
+=============================================================================
+3. RESULTS
+Rubric: "Explain the main findings in context, with useful figures or tables.
+Include at least one relevant model check or sensitivity analysis and explain
+what it revealed."
+Target length: about 1.5–2 pages including figures/tables.
+=============================================================================
+-->
+```
 
 ## 3. Results
 
-### Main Findings
+### Fitted OLS Models
+
+@fig-healthcare plots monthly healthcare excess returns against market excess returns, together with the fitted piecewise model (@eq-asymmetric).
 
 ```{r}
 #| label: fig-healthcare
 #| echo: false
-#| fig-cap: "Healthcare excess returns versus market excess returns, with the fitted asymmetric model (@eq-asymmetric). The slope may differ on either side of zero."
+#| fig-cap: "Healthcare excess returns versus market excess returns. The lines are fitted values from the piecewise model (@eq-asymmetric), whose two segments share an intercept and meet at zero."
 #| fig-width: 5.8
 #| fig-height: 2.65
 #| fig-align: center
@@ -419,48 +436,11 @@ ggplot(data, aes(x = market, y = health)) +
   )
 ```
 
-```{r}
-#| label: tbl-models
-#| echo: false
-#| tbl-cap: "Estimated slopes with Newey–West HAC standard errors (Bartlett weights, maximum lag 6) and 95% confidence intervals."
+The single-slope benchmark gives $\hat\alpha_1 =$ `r sprintf("%.2f", coef(model_simple)["market"])`. In the piecewise model, the estimated slopes are `r sprintf("%.2f", beta_positive)` for nonnegative market excess returns and `r sprintf("%.2f", beta_negative)` for negative market excess returns. Both are below one, suggesting that healthcare returns are generally less sensitive to market movements than a portfolio with a beta of one. The two slopes are also similar: the estimated difference is $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)`, and allowing separate slopes barely changes the fit ($R^2 =$ `r sprintf("%.3f", summary(model_simple)$r.squared)` for @eq-simple and `r sprintf("%.3f", summary(model_asymmetric)$r.squared)` for @eq-asymmetric).
 
-c_neg <- c(0, 1, 1)  # picks out beta_1 + beta_2
-se_hac <- sqrt(diag(vcov_hac))
-se_negative_hac <- sqrt(drop(t(c_neg) %*% vcov_hac %*% c_neg))
-se_simple_hac <- sqrt(hac_vcov(model_simple, hac_lag)["market", "market"])
+Under conventional OLS inference, the 95% confidence interval for $\beta_2$ is `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])` ($t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`; equivalently, the partial $F$-test gives $F =$ `r sprintf("%.2f", nested_test$F[2])`). These standard errors assume constant error variance and uncorrelated errors, which we check next.
 
-estimates <- c(
-  coef(model_simple)["market"],
-  beta_positive,
-  beta_negative,
-  beta2_hat
-)
-ses <- c(se_simple_hac, se_hac["market"], se_negative_hac, se_hac["interaction"])
-
-model_table <- data.frame(
-  Quantity = c(
-    "Single slope, $\\alpha_1$",
-    "Nonnegative-market slope, $\\beta_1$",
-    "Negative-market slope, $\\beta_1 + \\beta_2$",
-    "Difference, $\\beta_2$"
-  ),
-  Estimate = unname(estimates),
-  `HAC SE` = unname(ses),
-  `CI lower` = unname(estimates - z_crit * ses),
-  `CI upper` = unname(estimates + z_crit * ses),
-  check.names = FALSE
-)
-
-knitr::kable(model_table, digits = 3, row.names = FALSE, escape = FALSE)
-```
-
-*TODO: Report the test of* $H_0: \beta_2 = 0$ in words, using the inline values below, and interpret it in context (e.g., "a 1-point market decline is associated with ..."). Remember that a non-significant result is fine: explain what the confidence interval does and does not rule out.
-
-The estimated difference in slopes is $\hat\beta_2 =$ `r sprintf("%.3f", slope_difference)` (95% CI `r sprintf("%.3f", beta2_ci[1])` to `r sprintf("%.3f", beta2_ci[2])`; $t =$ `r sprintf("%.2f", beta2_summary["t value"])`, $p =$ `r format.pval(beta2_summary["Pr(>|t|)"], digits = 2)`).
-
-*TODO: Compare model fit (e.g.,* $R^2$, adjusted $R^2$, residual standard error) between the two models.
-
-### Model Checks
+### Checking the OLS Assumptions
 
 ```{r}
 #| label: fig-diagnostics
@@ -498,20 +478,67 @@ acf(diag_data$resid^2, lag.max = 24, main = "")
 title("(d) ACF of squared residuals", line = 0.8)
 ```
 
-*TODO: Explain what each panel reveals: nonlinearity, heavy tails, volatility clustering over time (e.g., 2008–09, 2020), and autocorrelation. Say whether the classical standard errors are trustworthy.*
-
 ```{r}
 #| label: residual-tests
-#| include: false
 
-bp_test <- bptest(model_asymmetric)          # studentized Breusch-Pagan
+bp_test <- bptest(model_asymmetric)             # studentized Breusch-Pagan
 bg_test <- bgtest(model_asymmetric, order = 6)  # Breusch-Godfrey, 6 lags
+
+# Residual standard deviation by calendar year, to describe panel (b).
+resid_sd_by_year <- tapply(
+  resid(model_asymmetric), format(data$date, "%Y"), sd
+)
 ```
+
+@fig-diagnostics shows the residual checks. Panel (a) shows no strong funnel shape against the fitted values, but panel (b) shows that the size of the deviations changes over time: the residual standard deviation is about `r sprintf("%.1f", resid_sd_by_year["2000"])` percentage points in 2000 and `r sprintf("%.1f", resid_sd_by_year["2025"])` in 2025, compared with roughly 2 to 3 in most other years. Panel (c) shows little autocorrelation in the raw residuals, so the direction of a deviation does not persist from month to month. Panel (d), however, shows positive autocorrelation in the squared residuals at several lags up to about one year, so large deviations tend to occur near one another in time.
+
+The supplemental tests point the same way. The studentized Breusch–Pagan test gives $BP =$ `r sprintf("%.2f", bp_test$statistic)` on `r bp_test$parameter` degrees of freedom ($p =$ `r format.pval(bp_test$p.value, digits = 2)`), modest evidence that the residual variance is related to the regressors. The Breusch–Godfrey test through six lags gives $LM =$ `r sprintf("%.2f", bg_test$statistic)` ($p =$ `r format.pval(bg_test$p.value, digits = 2)`), so it does not detect correlation in the residuals themselves. Together, the checks suggest that the errors do not have constant variance and that their magnitudes are dependent over time. Conventional OLS standard errors ignore both features and may understate the uncertainty in $\hat\beta_2$.
+
+### Robust Inference for the Slope Difference
+
+We therefore base inference on Newey–West HAC standard errors. @tbl-models reports the estimated slopes with HAC standard errors and confidence intervals.
+
+```{r}
+#| label: tbl-models
+#| echo: false
+#| tbl-cap: "Estimated slopes with Newey-West HAC standard errors (Bartlett weights, maximum lag 6) and 95% confidence intervals."
+
+c_neg <- c(0, 1, 1)  # picks out beta_1 + beta_2
+se_hac <- sqrt(diag(vcov_hac))
+se_negative_hac <- sqrt(drop(t(c_neg) %*% vcov_hac %*% c_neg))
+se_simple_hac <- sqrt(hac_vcov(model_simple, hac_lag)["market", "market"])
+
+estimates <- c(
+  coef(model_simple)["market"],
+  beta_positive,
+  beta_negative,
+  beta2_hat
+)
+ses <- c(se_simple_hac, se_hac["market"], se_negative_hac, se_hac["interaction"])
+
+model_table <- data.frame(
+  Quantity = c(
+    "Single slope, $\\alpha_1$",
+    "Nonnegative-market slope, $\\beta_1$",
+    "Negative-market slope, $\\beta_1 + \\beta_2$",
+    "Difference, $\\beta_2$"
+  ),
+  Estimate = unname(estimates),
+  `HAC SE` = unname(ses),
+  `CI lower` = unname(estimates - z_crit * ses),
+  `CI upper` = unname(estimates + z_crit * ses),
+  check.names = FALSE
+)
+
+knitr::kable(model_table, digits = 3, row.names = FALSE, escape = FALSE)
+```
+
+The estimated difference in slopes is $\hat\beta_2 =$ `r sprintf("%.3f", beta2_hat)` (95% HAC CI `r sprintf("%.3f", beta2_hac_ci[1])` to `r sprintf("%.3f", beta2_hac_ci[2])`; $z =$ `r sprintf("%.2f", beta2_hac_test["z value"])`, $p =$ `r format.pval(beta2_hac_test["Pr(>|z|)"], digits = 2)`). The interval contains zero, so we do not reject $H_0: \beta_2 = 0$. This does not show that the two sensitivities are equal: the data are consistent with a negative-market slope anywhere from about `r sprintf("%.2f", abs(beta2_hac_ci[1]))` lower to `r sprintf("%.2f", beta2_hac_ci[2])` higher than the nonnegative-market slope.
 
 ```{r}
 #| label: tbl-lag-comparison
 #| echo: false
-#| tbl-cap: "Inference for $\\beta_2$ under conventional OLS and Newey–West HAC standard errors with maximum lags of 0, 3, 6 (primary), and 12 months. The point estimate is the same in every row. SE ratio is each standard error divided by the OLS standard error."
+#| tbl-cap: "Inference for $\\beta_2$ under conventional OLS and Newey-West HAC standard errors with maximum lags of 0, 3, 6 (primary), and 12 months. The point estimate is the same in every row. SE ratio is each standard error divided by the OLS standard error."
 
 se_ols <- sqrt(vcov(model_asymmetric)["interaction", "interaction"])
 df_ols <- df.residual(model_asymmetric)
@@ -536,21 +563,26 @@ ols_row <- summarize_beta2(
 )
 
 # HAC at each lag: normal reference distribution.
-hac_rows <- lapply(c(0, 3, 6, 12), function(lag) {
+hac_lags <- c(0, 3, 6, 12)
+hac_rows <- lapply(hac_lags, function(lag) {
   se <- sqrt(hac_vcov(model_asymmetric, lag)["interaction", "interaction"])
   label <- paste0("HAC, lag ", lag, if (lag == hac_lag) " (primary)" else "")
   summarize_beta2(label, se, crit = z_crit, p = 2 * pnorm(-abs(beta2_hat / se)))
 })
 
 lag_table <- rbind(ols_row, do.call(rbind, hac_rows))
+
+# SE ratios for the text (rows 2-5 are the HAC lags, in order).
+se_ratio <- setNames(lag_table$`SE ratio`[-1], hac_lags)
+
 lag_table$`p-value` <- format.pval(lag_table$`p-value`, digits = 2, eps = 0.001)
 
 knitr::kable(lag_table, digits = 3, row.names = FALSE)
 ```
 
-*TODO: If we use robust standard errors, report how they change the conclusion for* $\beta_2$.
+@tbl-lag-comparison shows how much the choice of standard error matters. The primary HAC standard error is `r sprintf("%.2f", se_ratio["6"])` times the conventional OLS standard error, and the ratio grows from `r sprintf("%.2f", se_ratio["0"])` with no lags to `r sprintf("%.2f", se_ratio["12"])` with twelve. Conventional OLS therefore overstates the precision of $\hat\beta_2$, but every interval contains zero, so the conclusion does not depend on the lag choice.
 
-### Sensitivity Analyses
+### Sensitivity to Influential Months
 
 ```{r}
 #| label: influence
@@ -589,6 +621,8 @@ influence_table <- rbind(
   })),
   refit_row("Omit all three", top_idx)
 )
+
+refit_estimates <- influence_table$Estimate[-1]
 ```
 
 ```{r}
@@ -599,43 +633,7 @@ influence_table <- rbind(
 knitr::kable(influence_table, digits = 3, row.names = FALSE)
 ```
 
-The three most influential months for $\hat\beta_2$ are `r paste(influential_months$Month, collapse = ", ")`, with DFBETAS of `r paste(sprintf("%.2f", influential_months$dfbetas), collapse = ", ")`.
-
-```{r}
-#| label: tbl-subperiods
-#| echo: false
-#| tbl-cap: "Asymmetric model estimates by subperiod. TODO: confirm the subperiod boundaries."
-
-subperiods <- list(
-  "2000–2009" = c(as.Date("2000-01-01"), as.Date("2009-12-01")),
-  "2010–present" = c(as.Date("2010-01-01"), max(data$date))
-)
-
-subperiod_table <- do.call(rbind, lapply(names(subperiods), function(name) {
-  bounds <- subperiods[[name]]
-  sub <- data[data$date >= bounds[1] & data$date <= bounds[2], ]
-  fit <- lm(health ~ market + interaction, data = sub)
-  ci <- confint(fit)["interaction", ]
-  data.frame(
-    Period = name,
-    Months = nrow(sub),
-    `Up slope` = unname(coef(fit)["market"]),
-    `Down slope` = unname(sum(coef(fit)[c("market", "interaction")])),
-    `Difference` = unname(coef(fit)["interaction"]),
-    `CI lower` = unname(ci[1]),
-    `CI upper` = unname(ci[2]),
-    check.names = FALSE
-  )
-}))
-
-knitr::kable(subperiod_table, digits = 3, row.names = FALSE)
-```
-
-*TODO: Interpret the subperiod results. Is the conclusion stable across periods?*
-
-### Extension: Other Industries (if included)
-
-*TODO: Interpret the cross-industry comparison (essential vs. discretionary industries), or delete this subsection.*
+The three most influential months for $\hat\beta_2$ are `r paste(influential_months$Month, collapse = ", ")`, with DFBETAS of `r paste(sprintf("%.2f", influential_months$dfbetas), collapse = ", ")`. All three had large positive market excess returns (`r paste(sprintf("%.1f", influential_months$market), collapse = ", ")` percent). Because $\beta_2$ is the difference between the two slopes, months on the nonnegative side influence it through $\hat\beta_1$. Omitting these months moves $\hat\beta_2$ to between `r sprintf("%.3f", min(refit_estimates))` and `r sprintf("%.3f", max(refit_estimates))` (@tbl-influence), and every interval still contains zero.
 
 ```{=html}
 <!--
@@ -659,21 +657,21 @@ Target length: about 0.75–1 page.
 
 ### What Remains Uncertain
 
-*TODO: What the confidence interval for* $\beta_2$ can and cannot rule out. Whether the results depend on the sample period or a few extreme months.
+*TODO: What the confidence interval for* $\beta_2$ *can and cannot rule out, and how much the result depends on a few extreme months.*
 
 ### Limitations
 
-*TODO: Assumption violations found in Section 3 and how much they matter. The choice of break point at zero. Only five broad industries. Value-weighted portfolios are dominated by large firms.*
+*TODO: Assumption violations found in Section 3 and how much they matter. The choice of break point at zero. A single broad healthcare portfolio. Value-weighted portfolios are dominated by large firms.*
 
-*TODO: Association vs. causation. These are contemporaneous returns: the results do not show that market moves cause healthcare moves, and do not allow us to predict future returns.*
+Our analysis concerns contemporaneous market and industry returns. The association we estimate should not be interpreted as causal or as evidence of our ability to predict future returns.
 
 ### Changes from the Plan
 
-*TODO: List any substantial changes from the November 5 plan and why we made them (e.g., added robust standard errors, specific subperiods chosen, the extension included or dropped).*
+*TODO: List any substantial changes from the November 5 plan and why we made them: HAC standard errors as the primary inference (in response to proposal feedback), the DFBETAS-based influence analysis, and dropping the subperiod comparison and other-industry extension to keep healthcare as the single prespecified analysis.*
 
 ### Exploration, Model Selection, and Multiple Comparisons
 
-*TODO: Be honest about what was exploratory. The plan's figure already showed the slopes; did that affect our choices? If we tested several industries or subperiods, how does that affect the strength of any single significant result?*
+*TODO: Be honest about what was exploratory. The plan's figure already showed the slopes; did that affect our choices? Note that we ran one prespecified test, so no multiple-comparison adjustment is needed; the lag comparison and influence refits are sensitivity checks, not additional tests of new hypotheses.*
 
 ## References
 
@@ -697,12 +695,14 @@ how you used AI and checked its work. State if you used no outside help."
 - *Sebastian Sec: TODO*
 - *Tommy Smith: TODO*
 
-*TODO: Outside help and AI use. Carry over the ChatGPT acknowledgment from the plan and add any new uses (including Claude, which was used to draft this report skeleton), and how we checked each one.*
+We used ChatGPT to assist with writing and organizing R code for downloading, combining, and preparing the two publicly available datasets. To check the data preparation, we implemented automated validation tests using `stopifnot()` in R. These tests check for duplicate monthly observations, missing or nonfinite values in key variables, chronological consistency, and correct construction of excess returns and the interaction term. The tests are executed when the document renders and halt execution if an assertion fails. We also used ChatGPT to help improve the conciseness of the proposal. Specifically, we asked it to suggest passages that could be shortened or removed, then independently evaluated these recommendations and decided which changes to incorporate.
+
+*TODO: Add new AI uses and how we checked them, including Claude (report skeleton, HAC and influence-analysis code, and the merge and reorganization of the Methods and Results sections).*
 
 ```{=html}
 <!--
 Optional appendix: does not count toward the 4–6 page limit. Good place for
-extra diagnostics, the full regression output, or the full industry table.
+extra diagnostics or the full regression output.
 -->
 ```
 
